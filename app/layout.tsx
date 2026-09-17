@@ -38,11 +38,15 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  // Google Search Console에서 소유권 확인을 받으면, 발급된 값을
-  // NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION 환경변수로 등록하세요.
-  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
-    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
-    : undefined,
+  // 구글 서치 콘솔 / 네이버 서치어드바이저에서 "HTML 태그" 방식으로 소유 확인하면
+  // 발급되는 코드를 각각 NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION /
+  // NEXT_PUBLIC_NAVER_SITE_VERIFICATION 환경변수로 등록하세요.
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION
+      ? { 'naver-site-verification': process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION }
+      : undefined,
+  },
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
