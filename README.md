@@ -39,6 +39,8 @@ app/
   rooms/new/page.tsx     방 만들기 폼
   rooms/[id]/page.tsx    방 상세 + 참가 신청 / 수락·거절
   match/page.tsx          자동매칭 대기열 등록 + 결과 확인
+  admin/page.tsx           관리자 전용 방/대기열 삭제 페이지 (비밀번호 보호)
+  api/rooms/[id]/claim/    방 생성 직후 방장 쿠키를 확실하게 심어주는 라우트
   layout.tsx              공통 레이아웃 (헤더/푸터/AdSense 안내)
 components/
   RoomCard.tsx            방 목록 카드
@@ -54,7 +56,8 @@ lib/
   categories.ts            대/소분류 카테고리 데이터
   supabaseClient.ts        Supabase 서버 클라이언트 (service_role 키 사용)
   store.ts                  데이터 저장/조회 로직 (Supabase/PostgreSQL 기반)
-  actions.ts                방 생성/신청/매칭 등 서버 액션
+  actions.ts                방 생성/신청/매칭/관리자 등 서버 액션
+  admin.ts                  관리자 로그인 상태 확인 (ADMIN_PASSWORD 환경변수 사용)
 supabase/
   schema.sql                Supabase에 실행할 테이블 생성 SQL
 .env.local.example          로컬 실행용 환경변수 템플릿
@@ -77,6 +80,8 @@ DEPLOY.md                    GitHub/Supabase/Vercel 배포 단계별 가이드
   `verifyQueueEntryToken`; 방 생성 직후 쿠키는 `app/api/rooms/[id]/claim/route.ts`를
   거쳐서 심어짐 — 서버 액션 안에서 바로 심는 것보다 더 확실하게 동작함)
 - 카테고리별 이모지 아이콘 + 인라인 SVG 로고/배너 적용 (별도 이미지 파일 업로드 없이 동작)
+- `/admin` 페이지에서 비밀번호(`ADMIN_PASSWORD` 환경변수)로 로그인하면 방장/등록자
+  구분 없이 모든 방·매칭 대기열을 삭제할 수 있음 (테스트 데이터 정리용)
 - Google AdSense는 실제 코드가 아니라 자리(placeholder)만 잡아둔 상태
 - 배포: Vercel + GitHub 연동, `git push origin main`으로 자동 배포 (`DEPLOY.md` 참고)
 

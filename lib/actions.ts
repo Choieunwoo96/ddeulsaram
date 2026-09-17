@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import * as store from './store';
 import { Mode } from './types';
+import { ADMIN_COOKIE_NAME, isAdminAuthenticated } from './admin';
 
 // 방장 본인 확인용 쿠키 이름 규칙. 로그인 기능이 없는 프로토타입이라, 방을 만든
 // "이 브라우저"에만 방장 전용 쿠키를 심어두고 그걸로 수락/거절 권한을 확인한다.
@@ -147,5 +148,60 @@ export async function deleteQueueEntryAction(entryId: string, formData: FormData
   }
 
   await store.deleteQueueEntry(entryId);
+  revalidatePath('/match');
+}
+
+// ---------------------------------------------------------------------------
+// 관리자 (비밀번호 하나로 모든 방/대기열을 정리할 수 있는 전용 페이지용)
+// ---------------------------------------------------------------------------
+
+export async function adminLoginAction(formData: FormData) {
+  const password = String(formData.get('password') || '');
+  const correctPassword = process.env.ADMIN_PASSWORD?.trim();
+
+  if (!correctPassword) {
+    throw new Error(
+      'ADMIN_PASSWORD 환경변수가 설정되어 있지 않아요. Vercel(또는 .env.local)에 먼저 추가해주세요.'
+    );
+  }
+
+  if (password !== correctPassword) {
+    throw new Error('비밀번호가 올바르지 않아요.');
+  }
+
+  // 리다이렉트 없이 같은 페이지에서 바로 처리되는 액션이라 여기서 쿠키를 직접
+  // 심어도 안전하다 (방 생성처럼 곧바로 redirect()가 뒤따르는 경우와 달리
+  // 쿠키 누락 걱정이 없다).
+  cookies().set(ADMIN_COOKIE_NAME, correctPassword, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 60 * 8, // 8시간 동안 로그인 유지
+  });
+
+  revalidatePath('/admin');
+}
+
+export async function adminLogoutAction() {
+  cookies().set(ADMIN_COOKIE_NAME, '', { path: '/', maxAge: 0 });
+  revalidatePath('/admin');
+}
+
+export async function adminDeleteRoomAction(roomId: string, formData: FormData) {
+  if (!isAdminAuthenticated()) {
+    throw new Error('관리자 로그인이 필요해요.');
+  }
+  await store.deleteRoom(roomId);
+  revalidatePath('/admin');
+  revalidatePath('/');
+}
+
+export async function adminDeleteQueueEntryAction(entryId: string, formData: FormData) {
+  if (!isAdminAuthenticated()) {
+    throw new Error('관리자 로그인이 필요해요.');
+  }
+  await store.deleteQueueEntry(entryId);
+  revalidatePath('/admin');
   revalidatePath('/match');
 }
