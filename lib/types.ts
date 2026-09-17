@@ -68,3 +68,26 @@ export interface AdminStats {
   doneRooms: number;
   queueCount: number;
 }
+
+export type ReportTargetType = 'room' | 'chat_message';
+
+export interface Report {
+  id: string;
+  targetType: ReportTargetType;
+  targetId: string;
+  targetLabel: string;
+  offenderNickname: string | null;
+  offenderUserId: string | null;
+  reason: string;
+  detail: string;
+  status: 'pending' | 'resolved';
+  createdAt: string;
+}
+
+export interface BlockedSender {
+  id: string;
+  userId: string | null;
+  nickname: string | null;
+  reason: string;
+  createdAt: string;
+}

@@ -204,6 +204,50 @@ export async function deleteQueueEntryAction(entryId: string, formData: FormData
 }
 
 // ---------------------------------------------------------------------------
+// 신고 (방 / 채팅 메시지 공용)
+// ---------------------------------------------------------------------------
+
+const REPORT_REASONS = ['도배/광고', '부적절한 내용', '노쇼/비매너', '사기 의심', '기타'];
+
+export async function reportAction(
+  targetType: 'room' | 'chat_message',
+  targetId: string,
+  formData: FormData
+) {
+  const reason = String(formData.get('reason') || '').trim();
+  const detail = String(formData.get('detail') || '').trim();
+  if (!REPORT_REASONS.includes(reason)) {
+    throw new Error('신고 사유를 선택해주세요.');
+  }
+
+  let targetLabel = '';
+  let offenderNickname: string | null = null;
+  let offenderUserId: string | null = null;
+
+  if (targetType === 'room') {
+    const info = await store.getRoomReportInfo(targetId);
+    targetLabel = info?.title ?? '(삭제된 방)';
+    offenderNickname = info?.hostNickname ?? null;
+    offenderUserId = info?.hostUserId ?? null;
+  } else {
+    const info = await store.getChatMessageReportInfo(targetId);
+    targetLabel = info ? `${info.nickname}: ${info.content}`.slice(0, 200) : '(삭제된 메시지)';
+    offenderNickname = info?.nickname ?? null;
+    offenderUserId = info?.userId ?? null;
+  }
+
+  await store.createReport({
+    targetType,
+    targetId,
+    targetLabel,
+    offenderNickname,
+    offenderUserId,
+    reason,
+    detail,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // 관리자 (비밀번호 하나로 모든 방/대기열을 정리할 수 있는 전용 페이지용)
 // ---------------------------------------------------------------------------
 
@@ -256,4 +300,38 @@ export async function adminDeleteQueueEntryAction(entryId: string, formData: For
   await store.deleteQueueEntry(entryId);
   revalidatePath('/admin');
   revalidatePath('/match');
+}
+
+export async function adminResolveReportAction(reportId: string, formData: FormData) {
+  if (!isAdminAuthenticated()) {
+    redirect('/admin?error=wrong_password');
+  }
+  await store.resolveReport(reportId);
+  revalidatePath('/admin');
+}
+
+/**
+ * 신고 목록에서 "이 사람 차단" 버튼으로 호출된다. userId가 있으면 그 계정을,
+ * 없으면(비로그인) 닉네임으로 차단한다. 같은 액션으로 신고도 같이 처리 완료 처리한다.
+ */
+export async function adminBlockSenderAction(
+  reportId: string,
+  userId: string | null,
+  nickname: string | null,
+  formData: FormData
+) {
+  if (!isAdminAuthenticated()) {
+    redirect('/admin?error=wrong_password');
+  }
+  await store.blockSender({ userId, nickname, reason: `신고 ${reportId} 처리` });
+  await store.resolveReport(reportId);
+  revalidatePath('/admin');
+}
+
+export async function adminUnblockSenderAction(blockedId: string, formData: FormData) {
+  if (!isAdminAuthenticated()) {
+    redirect('/admin?error=wrong_password');
+  }
+  await store.unblockSender(blockedId);
+  revalidatePath('/admin');
 }

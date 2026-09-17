@@ -1,6 +1,17 @@
 import { randomUUID } from 'crypto';
 import { supabase } from './supabaseClient';
-import { Room, QueueEntry, MatchRecord, Application, Mode, Notification, AdminStats } from './types';
+import {
+  Room,
+  QueueEntry,
+  MatchRecord,
+  Application,
+  Mode,
+  Notification,
+  AdminStats,
+  Report,
+  ReportTargetType,
+  BlockedSender,
+} from './types';
 
 // ---------------------------------------------------------------------------
 // Supabase(PostgreSQL) 기반 데이터 레이어.
@@ -64,6 +75,31 @@ function mapMatchRow(row: any): MatchRecord {
     a: row.a_entry as QueueEntry,
     b: row.b_entry as QueueEntry,
     matchedAt: row.matched_at,
+  };
+}
+
+function mapReportRow(row: any): Report {
+  return {
+    id: row.id,
+    targetType: row.target_type,
+    targetId: row.target_id,
+    targetLabel: row.target_label ?? '',
+    offenderNickname: row.offender_nickname ?? null,
+    offenderUserId: row.offender_user_id ?? null,
+    reason: row.reason,
+    detail: row.detail ?? '',
+    status: row.status,
+    createdAt: row.created_at,
+  };
+}
+
+function mapBlockedSenderRow(row: any): BlockedSender {
+  return {
+    id: row.id,
+    userId: row.user_id ?? null,
+    nickname: row.nickname ?? null,
+    reason: row.reason ?? '',
+    createdAt: row.created_at,
   };
 }
 
@@ -499,6 +535,113 @@ export async function getAdminStats(): Promise<AdminStats> {
     doneRooms: doneRooms ?? 0,
     queueCount: queueCount ?? 0,
   };
+}
+
+// ---------------------------------------------------------------------------
+// 신고 / 차단
+// ---------------------------------------------------------------------------
+
+/** 방 신고 시 표시용 정보(제목·방장)를 가져온다. */
+export async function getRoomReportInfo(
+  roomId: string
+): Promise<{ title: string; hostNickname: string; hostUserId: string | null } | undefined> {
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('title, host_nickname, host_user_id')
+    .eq('id', roomId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return undefined;
+  return {
+    title: data.title,
+    hostNickname: data.host_nickname,
+    hostUserId: data.host_user_id ?? null,
+  };
+}
+
+/** 채팅 메시지 신고 시 표시용 정보(내용·작성자)를 가져온다. */
+export async function getChatMessageReportInfo(
+  messageId: string
+): Promise<{ content: string; nickname: string; userId: string | null } | undefined> {
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('content, nickname, user_id')
+    .eq('id', messageId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return undefined;
+  return { content: data.content, nickname: data.nickname, userId: data.user_id ?? null };
+}
+
+export async function createReport(input: {
+  targetType: ReportTargetType;
+  targetId: string;
+  targetLabel: string;
+  offenderNickname?: string | null;
+  offenderUserId?: string | null;
+  reason: string;
+  detail?: string;
+}) {
+  const id = genId('rp');
+  const { error } = await supabase.from('reports').insert({
+    id,
+    target_type: input.targetType,
+    target_id: input.targetId,
+    target_label: input.targetLabel,
+    offender_nickname: input.offenderNickname ?? null,
+    offender_user_id: input.offenderUserId ?? null,
+    reason: input.reason,
+    detail: input.detail ?? '',
+  });
+  if (error) throw error;
+}
+
+export async function listReports(status?: 'pending' | 'resolved'): Promise<Report[]> {
+  let query = supabase.from('reports').select('*').order('created_at', { ascending: false });
+  if (status) query = query.eq('status', status);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map(mapReportRow);
+}
+
+export async function resolveReport(reportId: string) {
+  const { error } = await supabase
+    .from('reports')
+    .update({ status: 'resolved' })
+    .eq('id', reportId);
+  if (error) throw error;
+}
+
+export async function blockSender(input: {
+  userId?: string | null;
+  nickname?: string | null;
+  reason?: string;
+}) {
+  if (!input.userId && !input.nickname) {
+    throw new Error('차단하려면 user_id 또는 nickname 중 하나는 있어야 합니다.');
+  }
+  const id = genId('blk');
+  const { error } = await supabase.from('blocked_senders').insert({
+    id,
+    user_id: input.userId ?? null,
+    nickname: input.nickname ?? null,
+    reason: input.reason ?? '',
+  });
+  if (error) throw error;
+}
+
+export async function listBlockedSenders(): Promise<BlockedSender[]> {
+  const { data, error } = await supabase
+    .from('blocked_senders')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(mapBlockedSenderRow);
+}
+
+export async function unblockSender(id: string) {
+  const { error } = await supabase.from('blocked_senders').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export type { Mode };

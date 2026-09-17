@@ -5,6 +5,7 @@ import { getRoom, verifyRoomHostToken } from '@/lib/store';
 import { applyAction, updateApplicationStatusAction } from '@/lib/actions';
 import { Application, Room } from '@/lib/types';
 import DeleteRoomButton from '@/components/DeleteRoomButton';
+import ReportButton from '@/components/ReportButton';
 
 // 쿠키(cookies())로 방장 여부를 매 요청마다 새로 확인해야 하므로, 이 페이지는
 // 절대 빌드 시점에 정적으로 캐시되면 안 된다.
@@ -58,7 +59,10 @@ export default async function RoomDetailPage({ params }: { params: { id: string 
         </div>
         <div className="flex items-start justify-between gap-2">
           <h1 className="text-xl font-bold">{room.title}</h1>
-          {isHost && <DeleteRoomButton roomId={room.id} />}
+          <div className="flex items-center gap-2 shrink-0">
+            {!isHost && <ReportButton targetType="room" targetId={room.id} />}
+            {isHost && <DeleteRoomButton roomId={room.id} />}
+          </div>
         </div>
         <p className="text-sm text-slate-500 mt-2 whitespace-pre-wrap">{room.description}</p>
       </div>
