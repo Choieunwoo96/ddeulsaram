@@ -53,12 +53,39 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="ko">
       <body className="min-h-screen bg-slate-50 text-slate-900">
         <header className="border-b bg-white sticky top-0 z-10">
-          <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 text-xl font-bold text-indigo-600">
-              <Logo className="w-8 h-8" />
-              뜰사람
-            </Link>
-            <nav className="flex items-center gap-4 text-sm font-medium text-slate-600">
+          <div className="mx-auto max-w-5xl px-4 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <Link href="/" className="flex items-center gap-2 text-xl font-bold text-indigo-600">
+                <Logo className="w-8 h-8" />
+                뜰사람
+              </Link>
+              {/* 로그인/회원가입(또는 닉네임)은 화면이 좁을 땐 로고 옆에 붙여서 항상 보이게 한다. */}
+              <div className="sm:hidden">
+                {user ? (
+                  <span className="flex items-center gap-3 text-sm font-medium text-slate-600">
+                    <span className="text-slate-400">{nickname}님</span>
+                    <form action={signOutAction}>
+                      <button type="submit" className="hover:text-indigo-600">
+                        로그아웃
+                      </button>
+                    </form>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-3 text-sm font-medium">
+                    <Link href="/login" className="text-slate-600 hover:text-indigo-600">
+                      로그인
+                    </Link>
+                    <Link
+                      href="/signup"
+                      className="bg-indigo-600 text-white rounded-lg px-3 py-1.5 hover:bg-indigo-700"
+                    >
+                      회원가입
+                    </Link>
+                  </span>
+                )}
+              </div>
+            </div>
+            <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-slate-600">
               <Link href="/" className="hover:text-indigo-600">
                 방 목록
               </Link>
@@ -68,28 +95,31 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <Link href="/match" className="hover:text-indigo-600">
                 자동매칭
               </Link>
-              {user ? (
-                <span className="flex items-center gap-3">
-                  <span className="text-slate-400">{nickname}님</span>
-                  <form action={signOutAction}>
-                    <button type="submit" className="hover:text-indigo-600">
-                      로그아웃
-                    </button>
-                  </form>
-                </span>
-              ) : (
-                <span className="flex items-center gap-3">
-                  <Link href="/login" className="hover:text-indigo-600">
-                    로그인
-                  </Link>
-                  <Link
-                    href="/signup"
-                    className="bg-indigo-600 text-white rounded-lg px-3 py-1.5 hover:bg-indigo-700"
-                  >
-                    회원가입
-                  </Link>
-                </span>
-              )}
+              {/* 화면이 넓을 땐(sm 이상) 로그인/회원가입(또는 닉네임)을 나머지 메뉴들과 같은 줄에 보여준다. */}
+              <div className="hidden sm:block">
+                {user ? (
+                  <span className="flex items-center gap-3">
+                    <span className="text-slate-400">{nickname}님</span>
+                    <form action={signOutAction}>
+                      <button type="submit" className="hover:text-indigo-600">
+                        로그아웃
+                      </button>
+                    </form>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-3">
+                    <Link href="/login" className="hover:text-indigo-600">
+                      로그인
+                    </Link>
+                    <Link
+                      href="/signup"
+                      className="bg-indigo-600 text-white rounded-lg px-3 py-1.5 hover:bg-indigo-700"
+                    >
+                      회원가입
+                    </Link>
+                  </span>
+                )}
+              </div>
             </nav>
           </div>
         </header>

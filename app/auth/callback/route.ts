@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-// 이메일 인증 링크(그리고 나중에 추가할 구글/카카오 로그인)를 처리하는 라우트.
-// "쿠키를 설정하면서 동시에 redirect"가 필요한 경우이므로, 서버 액션이 아니라
-// 진짜 Route Handler에서 NextResponse.redirect() + response.cookies.set()으로
-// 처리한다 (기존 /api/rooms/[id]/claim 과 동일한, 검증된 방식).
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
@@ -22,7 +18,7 @@ export async function GET(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
           });
