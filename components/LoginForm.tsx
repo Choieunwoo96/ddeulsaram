@@ -5,6 +5,7 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signInAction, type AuthActionState } from '@/lib/auth-actions';
+import OAuthButtons from './OAuthButtons';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -52,6 +53,8 @@ export default function LoginForm() {
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       <SubmitButton />
+
+      <OAuthButtons />
 
       <p className="text-sm text-slate-500 text-center">
         아직 계정이 없으신가요?{' '}

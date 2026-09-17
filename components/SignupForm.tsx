@@ -5,6 +5,7 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signUpAction, type AuthActionState } from '@/lib/auth-actions';
+import OAuthButtons from './OAuthButtons';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -77,6 +78,8 @@ export default function SignupForm() {
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       <SubmitButton />
+
+      <OAuthButtons />
 
       <p className="text-sm text-slate-500 text-center">
         이미 계정이 있으신가요?{' '}
