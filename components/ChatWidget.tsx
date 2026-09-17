@@ -1,19 +1,20 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 type ChatMessage = {
   id: string;
-  userId: string;
+  userId: string | null;
   nickname: string;
   content: string;
   createdAt: string;
 };
 
 const PRESENCE_CHANNEL = 'ddeulsaram-chat-presence';
+const GUEST_NICKNAME_STORAGE_KEY = 'ddeulsaram_guest_nickname';
 const MAX_MESSAGE_LENGTH = 500;
+const MAX_NICKNAME_LENGTH = 20;
 
 function mapRow(row: any): ChatMessage {
   return {
@@ -40,8 +41,23 @@ export default function ChatWidget({
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [unseen, setUnseen] = useState(0);
+  // 로그인 안 했을 때만 쓰는 게스트 닉네임 (localStorage에 저장해서 다음 방문에도 유지).
+  const [guestNickname, setGuestNickname] = useState<string | null>(null);
+  const [nicknameDraft, setNicknameDraft] = useState('');
   const openRef = useRef(open);
   const listRef = useRef<HTMLDivElement>(null);
+
+  const effectiveNickname = userId ? nickname : guestNickname;
+
+  useEffect(() => {
+    if (userId) return;
+    try {
+      const saved = window.localStorage.getItem(GUEST_NICKNAME_STORAGE_KEY);
+      if (saved) setGuestNickname(saved);
+    } catch {
+      // 프라이빗 창 등에서 localStorage가 막혀 있어도 채팅 자체는 되게 무시한다.
+    }
+  }, [userId]);
 
   useEffect(() => {
     openRef.current = open;
@@ -113,19 +129,34 @@ export default function ChatWidget({
 
   if (!supabase) return null;
 
+  const handleSetGuestNickname = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = nicknameDraft.trim().slice(0, MAX_NICKNAME_LENGTH);
+    if (!trimmed) return;
+    setGuestNickname(trimmed);
+    try {
+      window.localStorage.setItem(GUEST_NICKNAME_STORAGE_KEY, trimmed);
+    } catch {
+      // 저장 실패해도(프라이빗 창 등) 이번 방문에서는 그대로 채팅 가능하게 둔다.
+    }
+  };
+
   const handleSend = async () => {
     const content = input.trim();
-    if (!content || !userId || !nickname || sending) return;
+    if (!content || !effectiveNickname || sending) return;
     setSending(true);
     const { error } = await supabase.from('chat_messages').insert({
       id: window.crypto.randomUUID(),
-      user_id: userId,
-      nickname,
+      user_id: userId ?? null,
+      nickname: effectiveNickname,
       content: content.slice(0, MAX_MESSAGE_LENGTH),
     });
     setSending(false);
     if (!error) setInput('');
   };
+
+  const isMine = (m: ChatMessage) =>
+    userId ? m.userId === userId : m.userId === null && m.nickname === guestNickname;
 
   return (
     <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
@@ -146,15 +177,13 @@ export default function ChatWidget({
               </p>
             )}
             {messages.map((m) => (
-              <div key={m.id} className={m.userId === userId ? 'text-right' : ''}>
+              <div key={m.id} className={isMine(m) ? 'text-right' : ''}>
                 <div
                   className={`inline-block max-w-[85%] rounded-lg px-2.5 py-1.5 text-sm ${
-                    m.userId === userId
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-100 text-slate-700'
+                    isMine(m) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'
                   }`}
                 >
-                  {m.userId !== userId && (
+                  {!isMine(m) && (
                     <div className="text-[11px] font-semibold text-indigo-500 mb-0.5">
                       {m.nickname}
                     </div>
@@ -166,36 +195,60 @@ export default function ChatWidget({
           </div>
 
           <div className="border-t p-2">
-            {userId && nickname ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSend();
-                }}
-                className="flex gap-1.5"
-              >
+            {effectiveNickname ? (
+              <div className="space-y-1">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSend();
+                  }}
+                  className="flex gap-1.5"
+                >
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    maxLength={MAX_MESSAGE_LENGTH}
+                    placeholder="메시지 입력..."
+                    className="flex-1 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={sending || !input.trim()}
+                    className="bg-indigo-600 text-white rounded-lg px-3 text-sm font-medium disabled:opacity-50"
+                  >
+                    전송
+                  </button>
+                </form>
+                {!userId && (
+                  <p className="text-[11px] text-slate-400 text-right">
+                    {guestNickname}님으로 채팅중 ·{' '}
+                    <button
+                      type="button"
+                      onClick={() => setGuestNickname(null)}
+                      className="hover:text-indigo-600 hover:underline"
+                    >
+                      닉네임 변경
+                    </button>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <form onSubmit={handleSetGuestNickname} className="flex gap-1.5">
                 <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  maxLength={MAX_MESSAGE_LENGTH}
-                  placeholder="메시지 입력..."
+                  value={nicknameDraft}
+                  onChange={(e) => setNicknameDraft(e.target.value)}
+                  maxLength={MAX_NICKNAME_LENGTH}
+                  placeholder="닉네임을 입력하세요"
                   className="flex-1 border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 />
                 <button
                   type="submit"
-                  disabled={sending || !input.trim()}
-                  className="bg-indigo-600 text-white rounded-lg px-3 text-sm font-medium disabled:opacity-50"
+                  disabled={!nicknameDraft.trim()}
+                  className="bg-indigo-600 text-white rounded-lg px-3 text-sm font-medium disabled:opacity-50 whitespace-nowrap"
                 >
-                  전송
+                  채팅 시작
                 </button>
               </form>
-            ) : (
-              <p className="text-xs text-slate-400 text-center py-1">
-                <Link href="/login" className="text-indigo-600 font-medium hover:underline">
-                  로그인
-                </Link>
-                하고 채팅에 참여해보세요.
-              </p>
             )}
           </div>
         </div>
