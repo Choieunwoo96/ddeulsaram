@@ -11,7 +11,7 @@ import RoomCard from '@/components/RoomCard';
 // 이 페이지는 빌드 시점에 정적으로 캐시되면 안 된다.
 export const dynamic = 'force-dynamic';
 
-type HomeSearchParams = { major?: string; minor?: string; mode?: string };
+type HomeSearchParams = { major?: string; minor?: string; mode?: string; q?: string };
 
 // 카테고리로 필터링해서 들어오면 그 카테고리 이름이 들어간 제목/설명을 붙여서
 // "리그오브레전드 상대 구하기"처럼 검색에 더 잘 걸리게 한다.
@@ -44,6 +44,7 @@ export default async function HomePage({
     major: searchParams.major,
     minor: searchParams.minor,
     mode: searchParams.mode,
+    q: searchParams.q,
     status: 'open',
   });
   const selectedMajor = CATEGORIES.find((c) => c.major === searchParams.major);
@@ -85,6 +86,25 @@ export default async function HomePage({
       </section>
 
       <AdSlot />
+
+      <form action="/" className="flex gap-2">
+        {searchParams.major && <input type="hidden" name="major" value={searchParams.major} />}
+        {searchParams.minor && <input type="hidden" name="minor" value={searchParams.minor} />}
+        {searchParams.mode && <input type="hidden" name="mode" value={searchParams.mode} />}
+        <input
+          type="search"
+          name="q"
+          defaultValue={searchParams.q}
+          placeholder="방 제목, 설명, 방장 닉네임으로 검색"
+          className="input flex-1"
+        />
+        <button
+          type="submit"
+          className="bg-indigo-600 text-white rounded-lg px-4 text-sm font-semibold hover:bg-indigo-700 shrink-0"
+        >
+          검색
+        </button>
+      </form>
 
       <section>
         <h2 className="text-sm font-semibold text-slate-500 mb-2">카테고리</h2>
@@ -137,7 +157,17 @@ export default async function HomePage({
       </section>
 
       <section id="rooms" className="space-y-3 scroll-mt-20">
-        <h2 className="text-sm font-semibold text-slate-500">모집중인 방 ({rooms.length})</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-slate-500">모집중인 방 ({rooms.length})</h2>
+          {searchParams.q && (
+            <span className="text-xs text-slate-400">
+              "{searchParams.q}" 검색 결과 ·{' '}
+              <Link href="/" className="text-indigo-600 hover:underline">
+                초기화
+              </Link>
+            </span>
+          )}
+        </div>
         {rooms.length === 0 && (
           <p className="text-sm text-slate-400 py-8 text-center border rounded-lg bg-white">
             조건에 맞는 방이 없어요. 첫 번째 방을 만들어보세요!

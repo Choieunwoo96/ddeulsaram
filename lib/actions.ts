@@ -6,6 +6,16 @@ import { cookies } from 'next/headers';
 import * as store from './store';
 import { Mode } from './types';
 import { ADMIN_COOKIE_NAME, isAdminAuthenticated } from './admin';
+import { createSupabaseServerClient } from './supabase/server';
+
+async function currentUserId(): Promise<string | undefined> {
+  const supabase = createSupabaseServerClient();
+  if (!supabase) return undefined;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id;
+}
 
 // 방장 본인 확인용 쿠키 이름 규칙. 로그인 기능이 없는 프로토타입이라, 방을 만든
 // "이 브라우저"에만 방장 전용 쿠키를 심어두고 그걸로 수락/거절 권한을 확인한다.
@@ -36,18 +46,22 @@ export async function createRoomAction(formData: FormData) {
     throw new Error('필수 항목을 모두 입력해주세요.');
   }
 
-  const { room, hostToken } = await store.createRoom({
-    title,
-    major,
-    minor,
-    mode,
-    location,
-    datetime,
-    capacity,
-    condition,
-    description,
-    hostNickname,
-  });
+  const hostUserId = await currentUserId();
+  const { room, hostToken } = await store.createRoom(
+    {
+      title,
+      major,
+      minor,
+      mode,
+      location,
+      datetime,
+      capacity,
+      condition,
+      description,
+      hostNickname,
+    },
+    hostUserId
+  );
 
   revalidatePath('/');
   // 방장 확인용 쿠키는 여기서 바로 심지 않고, 진짜 HTTP 리다이렉트로 쿠키를 심어주는
@@ -79,7 +93,20 @@ export async function applyAction(roomId: string, formData: FormData) {
   if (!nickname || !spec) {
     throw new Error('닉네임과 스펙을 입력해주세요.');
   }
-  await store.applyToRoom(roomId, nickname, spec);
+  const applicantUserId = await currentUserId();
+  await store.applyToRoom(roomId, nickname, spec, applicantUserId);
+
+  // 방장이 로그인 상태로 방을 만들었다면(host_user_id가 있으면) 알림을 보낸다.
+  const roomInfo = await store.getRoomNotifyInfo(roomId);
+  if (roomInfo?.hostUserId) {
+    await store.createNotification({
+      userId: roomInfo.hostUserId,
+      type: 'application_received',
+      title: `${nickname}님이 "${roomInfo.title}"에 신청했어요`,
+      link: `/rooms/${roomId}`,
+    });
+  }
+
   revalidatePath(`/rooms/${roomId}`);
 }
 
@@ -96,6 +123,9 @@ export async function updateApplicationStatusAction(
     throw new Error('방장만 신청을 수락하거나 거절할 수 있어요.');
   }
 
+  // 알림에 쓸 정보(신청자 user_id, 방 제목)는 상태를 바꾸기 전에 먼저 조회해둔다.
+  const appInfo = await store.getApplicationNotifyInfo(appId);
+
   await store.updateApplicationStatus(roomId, appId, status);
 
   if (status === 'accepted') {
@@ -103,7 +133,29 @@ export async function updateApplicationStatusAction(
     await store.autoCompleteRoomIfFull(roomId);
   }
 
+  if (appInfo?.applicantUserId) {
+    const statusLabel = status === 'accepted' ? '수락' : '거절';
+    await store.createNotification({
+      userId: appInfo.applicantUserId,
+      type: `application_${status}`,
+      title: `"${appInfo.roomTitle}" 신청이 ${statusLabel}됐어요`,
+      link: `/rooms/${roomId}`,
+    });
+  }
+
   revalidatePath(`/rooms/${roomId}`);
+  revalidatePath('/');
+}
+
+export async function markNotificationsReadAction() {
+  const supabase = createSupabaseServerClient();
+  if (!supabase) return;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await store.markAllNotificationsRead(user.id);
   revalidatePath('/');
 }
 

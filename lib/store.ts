@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { supabase } from './supabaseClient';
-import { Room, QueueEntry, MatchRecord, Application, Mode } from './types';
+import { Room, QueueEntry, MatchRecord, Application, Mode, Notification, AdminStats } from './types';
 
 // ---------------------------------------------------------------------------
 // Supabase(PostgreSQL) 기반 데이터 레이어.
@@ -67,6 +67,18 @@ function mapMatchRow(row: any): MatchRecord {
   };
 }
 
+function mapNotificationRow(row: any): Notification {
+  return {
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    body: row.body ?? '',
+    link: row.link ?? null,
+    read: row.read,
+    createdAt: row.created_at,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Rooms
 // ---------------------------------------------------------------------------
@@ -76,12 +88,20 @@ export async function listRooms(filter?: {
   minor?: string;
   mode?: string;
   status?: string;
+  q?: string;
 }): Promise<Room[]> {
   let query = supabase.from('rooms').select('*').order('created_at', { ascending: false });
   if (filter?.major) query = query.eq('major', filter.major);
   if (filter?.minor) query = query.eq('minor', filter.minor);
   if (filter?.mode) query = query.eq('mode', filter.mode);
   if (filter?.status) query = query.eq('status', filter.status);
+  if (filter?.q) {
+    // 제목/설명/방장 닉네임 중 하나라도 검색어를 포함하면 결과에 포함한다.
+    const escaped = filter.q.trim().replace(/[%_]/g, (c) => `\\${c}`);
+    query = query.or(
+      `title.ilike.%${escaped}%,description.ilike.%${escaped}%,host_nickname.ilike.%${escaped}%`
+    );
+  }
 
   const { data, error } = await query;
   if (error) throw error;
@@ -116,7 +136,8 @@ export async function getRoom(id: string): Promise<Room | undefined> {
  * 절대 Room 타입/클라이언트 쪽으로 넘기지 않고 이 함수를 호출한 서버 코드만 사용한다.
  */
 export async function createRoom(
-  input: Omit<Room, 'id' | 'applications' | 'status' | 'createdAt'>
+  input: Omit<Room, 'id' | 'applications' | 'status' | 'createdAt'>,
+  hostUserId?: string
 ): Promise<{ room: Room; hostToken: string }> {
   const id = genId('r');
   const hostToken = randomUUID();
@@ -136,6 +157,7 @@ export async function createRoom(
       host_nickname: input.hostNickname,
       status: 'open',
       host_token: hostToken,
+      host_user_id: hostUserId ?? null,
     })
     .select()
     .single();
@@ -175,16 +197,62 @@ export async function deleteRoom(roomId: string) {
 export async function applyToRoom(
   roomId: string,
   nickname: string,
-  spec: string
+  spec: string,
+  applicantUserId?: string
 ): Promise<Application | undefined> {
   const id = genId('a');
   const { data, error } = await supabase
     .from('applications')
-    .insert({ id, room_id: roomId, nickname, spec, status: 'pending' })
+    .insert({
+      id,
+      room_id: roomId,
+      nickname,
+      spec,
+      status: 'pending',
+      applicant_user_id: applicantUserId ?? null,
+    })
     .select()
     .single();
   if (error) throw error;
   return mapApplicationRow(data);
+}
+
+/**
+ * 방에 신청이 들어왔을 때, 그 방의 방장에게 알림을 보내야 하는지 확인하기 위해
+ * (로그인 상태로 만든 방이었다면) 방장의 user_id와 방 제목을 가져온다.
+ */
+export async function getRoomNotifyInfo(
+  roomId: string
+): Promise<{ hostUserId: string | null; title: string } | undefined> {
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('host_user_id, title')
+    .eq('id', roomId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return undefined;
+  return { hostUserId: data.host_user_id ?? null, title: data.title };
+}
+
+/**
+ * 신청이 수락/거절됐을 때, 신청자에게 알림을 보내야 하는지 확인하기 위해
+ * (로그인 상태로 신청했었다면) 신청자의 user_id와 방 제목을 가져온다.
+ */
+export async function getApplicationNotifyInfo(
+  appId: string
+): Promise<{ applicantUserId: string | null; roomTitle: string } | undefined> {
+  const { data, error } = await supabase
+    .from('applications')
+    .select('applicant_user_id, rooms(title)')
+    .eq('id', appId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return undefined;
+  const room = Array.isArray(data.rooms) ? data.rooms[0] : data.rooms;
+  return {
+    applicantUserId: data.applicant_user_id ?? null,
+    roomTitle: (room as { title?: string } | null)?.title ?? '',
+  };
 }
 
 export async function updateApplicationStatus(
@@ -343,6 +411,94 @@ export async function verifyQueueEntryToken(
 export async function deleteQueueEntry(entryId: string) {
   const { error } = await supabase.from('queue_entries').delete().eq('id', entryId);
   if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+export async function createNotification(input: {
+  userId: string;
+  type: string;
+  title: string;
+  body?: string;
+  link?: string;
+}) {
+  const id = genId('n');
+  const { error } = await supabase.from('notifications').insert({
+    id,
+    user_id: input.userId,
+    type: input.type,
+    title: input.title,
+    body: input.body ?? '',
+    link: input.link ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function listNotifications(userId: string, limit = 20): Promise<Notification[]> {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map(mapNotificationRow);
+}
+
+export async function countUnreadNotifications(userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function markAllNotificationsRead(userId: string) {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------
+// 관리자 대시보드 통계
+// ---------------------------------------------------------------------------
+
+export async function getAdminStats(): Promise<AdminStats> {
+  const [
+    { count: totalUsers, error: usersError },
+    { count: totalRooms, error: roomsError },
+    { count: openRooms, error: openError },
+    { count: closedRooms, error: closedError },
+    { count: doneRooms, error: doneError },
+    { count: queueCount, error: queueError },
+  ] = await Promise.all([
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase.from('rooms').select('id', { count: 'exact', head: true }),
+    supabase.from('rooms').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+    supabase.from('rooms').select('id', { count: 'exact', head: true }).eq('status', 'closed'),
+    supabase.from('rooms').select('id', { count: 'exact', head: true }).eq('status', 'done'),
+    supabase.from('queue_entries').select('id', { count: 'exact', head: true }),
+  ]);
+
+  const firstError =
+    usersError || roomsError || openError || closedError || doneError || queueError;
+  if (firstError) throw firstError;
+
+  return {
+    totalUsers: totalUsers ?? 0,
+    totalRooms: totalRooms ?? 0,
+    openRooms: openRooms ?? 0,
+    closedRooms: closedRooms ?? 0,
+    doneRooms: doneRooms ?? 0,
+    queueCount: queueCount ?? 0,
+  };
 }
 
 export type { Mode };

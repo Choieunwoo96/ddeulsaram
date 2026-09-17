@@ -49,3 +49,22 @@ export interface MatchRecord {
   b: QueueEntry;
   matchedAt: string;
 }
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  totalRooms: number;
+  openRooms: number;
+  closedRooms: number;
+  doneRooms: number;
+  queueCount: number;
+}

@@ -1,4 +1,4 @@
-import { listRooms, listQueue } from '@/lib/store';
+import { listRooms, listQueue, getAdminStats } from '@/lib/store';
 import { isAdminAuthenticated } from '@/lib/admin';
 import {
   adminLoginAction,
@@ -59,13 +59,22 @@ export default async function AdminPage({
     );
   }
 
-  const [rooms, queue] = await Promise.all([listRooms(), listQueue()]);
+  const [rooms, queue, stats] = await Promise.all([listRooms(), listQueue(), getAdminStats()]);
+
+  const statCards: { label: string; value: number }[] = [
+    { label: '가입 회원', value: stats.totalUsers },
+    { label: '전체 방', value: stats.totalRooms },
+    { label: '모집중', value: stats.openRooms },
+    { label: '마감', value: stats.closedRooms },
+    { label: '완료', value: stats.doneRooms },
+    { label: '매칭 대기열', value: stats.queueCount },
+  ];
 
   return (
     <div className="max-w-3xl space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">관리자 페이지</h1>
+          <h1 className="text-xl font-bold">관리자 대시보드</h1>
           <p className="text-sm text-slate-500">
             방장/등록자 구분 없이 모든 방과 매칭 대기열을 여기서 지울 수 있어요.
           </p>
@@ -76,6 +85,15 @@ export default async function AdminPage({
           </button>
         </form>
       </div>
+
+      <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {statCards.map((s) => (
+          <div key={s.label} className="bg-white border rounded-lg p-4">
+            <div className="text-2xl font-bold text-indigo-600">{s.value}</div>
+            <div className="text-xs text-slate-400 mt-0.5">{s.label}</div>
+          </div>
+        ))}
+      </section>
 
       <section className="space-y-2">
         <h2 className="font-semibold text-sm text-slate-500">방 목록 ({rooms.length})</h2>

@@ -5,6 +5,9 @@ import Image from 'next/image';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { signOutAction } from '@/lib/auth-actions';
+import { listNotifications, countUnreadNotifications } from '@/lib/store';
+import NotificationBell from '@/components/NotificationBell';
+import ChatWidget from '@/components/ChatWidget';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -49,6 +52,20 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const user = supabase ? (await supabase.auth.getUser()).data.user : null;
   const nickname = (user?.user_metadata?.nickname as string | undefined) || user?.email;
 
+  // 알림 조회는 부가 기능이라, 여기서 에러가 나도 헤더/페이지 전체가 죽지 않게 방어한다.
+  let notifications: Awaited<ReturnType<typeof listNotifications>> = [];
+  let unreadCount = 0;
+  if (user) {
+    try {
+      [notifications, unreadCount] = await Promise.all([
+        listNotifications(user.id, 10),
+        countUnreadNotifications(user.id),
+      ]);
+    } catch {
+      // 알림 테이블이 아직 없거나(마이그레이션 전) DB 오류가 나도 무시한다.
+    }
+  }
+
   return (
     <html lang="ko">
       <body className="min-h-screen bg-slate-50 text-slate-900">
@@ -61,7 +78,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               {/* 로그인/회원가입(또는 닉네임)은 화면이 좁을 땐 로고 옆에 붙여서 항상 보이게 한다. */}
               <div className="sm:hidden">
                 {user ? (
-                  <span className="flex items-center gap-3 text-sm font-medium text-slate-600">
+                  <span className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                    <NotificationBell initialNotifications={notifications} initialUnreadCount={unreadCount} />
                     <span className="text-slate-400">{nickname}님</span>
                     <form action={signOutAction}>
                       <button type="submit" className="hover:text-indigo-600">
@@ -98,6 +116,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <div className="hidden sm:block">
                 {user ? (
                   <span className="flex items-center gap-3">
+                    <NotificationBell initialNotifications={notifications} initialUnreadCount={unreadCount} />
                     <span className="text-slate-400">{nickname}님</span>
                     <form action={signOutAction}>
                       <button type="submit" className="hover:text-indigo-600">
@@ -146,6 +165,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             </Link>
           </nav>
         </footer>
+
+        <ChatWidget userId={user?.id} nickname={nickname} />
       </body>
     </html>
   );
