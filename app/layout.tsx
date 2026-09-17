@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import Logo from '@/components/Logo';
+import Image from 'next/image';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { signOutAction } from '@/lib/auth-actions';
@@ -55,9 +55,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <header className="border-b bg-white sticky top-0 z-10">
           <div className="mx-auto max-w-5xl px-4 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center justify-between gap-3">
-              <Link href="/" className="flex items-center gap-2 text-xl font-bold text-indigo-600">
-                <Logo className="w-8 h-8" />
-                뜰사람
+              <Link href="/" className="flex items-center">
+                <Image src="/logo.png" alt="뜰사람" width={160} height={107} className="h-9 w-auto" priority />
               </Link>
               {/* 로그인/회원가입(또는 닉네임)은 화면이 좁을 땐 로고 옆에 붙여서 항상 보이게 한다. */}
               <div className="sm:hidden">

@@ -1,11 +1,11 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import { CATEGORIES } from '@/lib/categories';
 import { listRooms } from '@/lib/store';
 import AdSlot from '@/components/AdSlot';
 import RoomCard from '@/components/RoomCard';
-import Logo from '@/components/Logo';
 
 // 쿠키(cookies())로 "내가 만든 방"인지 매 요청마다 새로 확인해야 하므로,
 // 이 페이지는 빌드 시점에 정적으로 캐시되면 안 된다.
@@ -61,14 +61,27 @@ export default async function HomePage({
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-500 text-white px-6 py-8 flex items-center gap-4">
-        <Logo className="w-14 h-14 shrink-0" variant="light" />
-        <div>
-          <h1 className="text-2xl font-bold mb-1">배틀 상대를 구해보세요</h1>
-          <p className="text-indigo-100 text-sm">
-            온라인 게임부터 오락실, 오프라인 액티비티까지 — 방을 만들거나 참가해보세요.
-          </p>
-        </div>
+      <section className="relative rounded-2xl overflow-hidden">
+        <h1 className="sr-only">뜰사람 — 오늘 게임 할사람? 배틀 상대를 구해보세요</h1>
+        <Image
+          src="/banner.png"
+          alt="뜰사람 — 오늘 게임 할사람? 온라인 게임부터 오락실, 스포츠·액티비티까지, 지금 하고 싶은 걸 올리고 같이할 사람을 찾아보세요."
+          width={1536}
+          height={1024}
+          className="w-full h-auto"
+          priority
+        />
+        {/* 배너 이미지에 그려진 "방 찾기"/"방 만들기" 버튼 위치에 맞춘 실제 링크 (이미지 좌표 기준 % 배치) */}
+        <Link
+          href="#rooms"
+          className="absolute left-[4%] top-[60%] w-[19%] h-[7%]"
+          aria-label="방 찾기"
+        />
+        <Link
+          href="/rooms/new"
+          className="absolute left-[24%] top-[60%] w-[17%] h-[7%]"
+          aria-label="방 만들기"
+        />
       </section>
 
       <AdSlot />
@@ -123,7 +136,7 @@ export default async function HomePage({
         )}
       </section>
 
-      <section className="space-y-3">
+      <section id="rooms" className="space-y-3 scroll-mt-20">
         <h2 className="text-sm font-semibold text-slate-500">모집중인 방 ({rooms.length})</h2>
         {rooms.length === 0 && (
           <p className="text-sm text-slate-400 py-8 text-center border rounded-lg bg-white">
