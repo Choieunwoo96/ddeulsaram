@@ -36,6 +36,7 @@ create table if not exists queue_entries (
   region text not null,
   timeslot text not null default '',
   note text not null default '',
+  entry_token text, -- 등록한 본인 확인용 비밀 토큰 (대기열 삭제 권한 체크에 사용)
   created_at timestamptz not null default now()
 );
 

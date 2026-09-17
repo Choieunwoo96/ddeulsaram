@@ -9,6 +9,15 @@ import { Mode } from './types';
 // 방장 본인 확인용 쿠키 이름 규칙. 로그인 기능이 없는 프로토타입이라, 방을 만든
 // "이 브라우저"에만 방장 전용 쿠키를 심어두고 그걸로 수락/거절 권한을 확인한다.
 const hostCookieName = (roomId: string) => `host_${roomId}`;
+// 매칭 대기열 항목을 등록한 본인 확인용 쿠키 이름 규칙 (삭제 권한 체크에 사용).
+const entryCookieName = (entryId: string) => `entry_${entryId}`;
+
+const HOST_COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+};
 
 export async function createRoomAction(formData: FormData) {
   const title = String(formData.get('title') || '').trim();
@@ -39,17 +48,28 @@ export async function createRoomAction(formData: FormData) {
     hostNickname,
   });
 
-  // 방을 만든 이 브라우저에만 방장 확인용 쿠키를 심는다. 1년간 유지, 다른 사이트에서는
-  // 못 읽도록 httpOnly로 설정 (자바스크립트로도 접근 불가, 서버만 읽을 수 있음).
-  cookies().set(hostCookieName(room.id), hostToken, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-  });
-
   revalidatePath('/');
-  redirect(`/rooms/${room.id}`);
+  // 방장 확인용 쿠키는 여기서 바로 심지 않고, 진짜 HTTP 리다이렉트로 쿠키를 심어주는
+  // /api/rooms/[id]/claim 라우트를 거쳐서 방으로 이동한다. (서버 액션 안에서
+  // cookies().set() 직후 redirect()로 넘어가는 방식이 일부 환경에서 쿠키가 누락되는
+  // 문제가 있어서, 더 확실하게 동작하는 방식으로 바꿨다.)
+  redirect(`/api/rooms/${room.id}/claim?token=${hostToken}`);
+}
+
+/**
+ * 방장만 방을 삭제할 수 있다. 삭제되면 신청 내역(applications)도 같이 지워진다
+ * (DB에서 on delete cascade로 연결되어 있음).
+ */
+export async function deleteRoomAction(roomId: string, formData: FormData) {
+  const token = cookies().get(hostCookieName(roomId))?.value;
+  const isHost = await store.verifyRoomHostToken(roomId, token);
+  if (!isHost) {
+    throw new Error('방장만 이 방을 삭제할 수 있어요.');
+  }
+
+  await store.deleteRoom(roomId);
+  revalidatePath('/');
+  redirect('/');
 }
 
 export async function applyAction(roomId: string, formData: FormData) {
@@ -99,6 +119,33 @@ export async function addQueueEntryAction(formData: FormData) {
     throw new Error('필수 항목을 모두 입력해주세요.');
   }
 
-  await store.addQueueEntry({ nickname, major, minor, mode, region, timeslot, note });
+  const { entry, entryToken } = await store.addQueueEntry({
+    nickname,
+    major,
+    minor,
+    mode,
+    region,
+    timeslot,
+    note,
+  });
+
+  // 이 등록을 나중에 본인이 취소(삭제)할 수 있도록 브라우저에 확인용 쿠키를 심는다.
+  // (리다이렉트 없이 같은 페이지에서 바로 처리되는 액션이라 여기서 직접 심어도 안전하다.)
+  cookies().set(entryCookieName(entry.id), entryToken, HOST_COOKIE_OPTIONS);
+
+  revalidatePath('/match');
+}
+
+/**
+ * 본인이 등록한 대기열 항목만 삭제(취소)할 수 있다.
+ */
+export async function deleteQueueEntryAction(entryId: string, formData: FormData) {
+  const token = cookies().get(entryCookieName(entryId))?.value;
+  const isOwner = await store.verifyQueueEntryToken(entryId, token);
+  if (!isOwner) {
+    throw new Error('본인이 등록한 대기열만 삭제할 수 있어요.');
+  }
+
+  await store.deleteQueueEntry(entryId);
   revalidatePath('/match');
 }

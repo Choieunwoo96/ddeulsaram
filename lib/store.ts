@@ -162,6 +162,16 @@ export async function verifyRoomHostToken(
   return !!data?.host_token && data.host_token === token;
 }
 
+/**
+ * 방을 삭제한다. applications 테이블은 on delete cascade로 연결되어 있어서
+ * 신청 내역도 같이 정리된다. 호출하는 쪽(서버 액션)에서 반드시 방장인지
+ * verifyRoomHostToken으로 먼저 확인해야 한다.
+ */
+export async function deleteRoom(roomId: string) {
+  const { error } = await supabase.from('rooms').delete().eq('id', roomId);
+  if (error) throw error;
+}
+
 export async function applyToRoom(
   roomId: string,
   nickname: string,
@@ -250,7 +260,7 @@ export async function listMatchesForNickname(nickname: string): Promise<MatchRec
  */
 export async function addQueueEntry(
   input: Omit<QueueEntry, 'id' | 'createdAt'>
-): Promise<{ entry: QueueEntry; match?: MatchRecord }> {
+): Promise<{ entry: QueueEntry; entryToken: string; match?: MatchRecord }> {
   // 저장/검색 양쪽 다 trim된 값을 써야 "서울 "과 "서울"처럼 공백 하나 때문에
   // 매칭이 실패하는 걸 막을 수 있다.
   const nickname = input.nickname.trim();
@@ -271,6 +281,7 @@ export async function addQueueEntry(
   if (findError) throw findError;
 
   const id = genId('q');
+  const entryToken = randomUUID();
   const { data: insertedRow, error: insertError } = await supabase
     .from('queue_entries')
     .insert({
@@ -282,6 +293,7 @@ export async function addQueueEntry(
       region,
       timeslot,
       note,
+      entry_token: entryToken,
     })
     .select()
     .single();
@@ -305,10 +317,32 @@ export async function addQueueEntry(
       .single();
     if (matchError) throw matchError;
 
-    return { entry, match: mapMatchRow(matchRow) };
+    return { entry, entryToken, match: mapMatchRow(matchRow) };
   }
 
-  return { entry };
+  return { entry, entryToken };
+}
+
+/**
+ * 이 브라우저(쿠키로 넘어온 token)가 실제로 이 대기열 항목을 등록한 본인인지 확인한다.
+ */
+export async function verifyQueueEntryToken(
+  entryId: string,
+  token: string | undefined
+): Promise<boolean> {
+  if (!token) return false;
+  const { data, error } = await supabase
+    .from('queue_entries')
+    .select('entry_token')
+    .eq('id', entryId)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data?.entry_token && data.entry_token === token;
+}
+
+export async function deleteQueueEntry(entryId: string) {
+  const { error } = await supabase.from('queue_entries').delete().eq('id', entryId);
+  if (error) throw error;
 }
 
 export type { Mode };

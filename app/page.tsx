@@ -1,9 +1,14 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { CATEGORIES } from '@/lib/categories';
 import { listRooms } from '@/lib/store';
 import AdSlot from '@/components/AdSlot';
 import RoomCard from '@/components/RoomCard';
 import Logo from '@/components/Logo';
+
+// 쿠키(cookies())로 "내가 만든 방"인지 매 요청마다 새로 확인해야 하므로,
+// 이 페이지는 빌드 시점에 정적으로 캐시되면 안 된다.
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage({
   searchParams,
@@ -17,6 +22,17 @@ export default async function HomePage({
     status: 'open',
   });
   const selectedMajor = CATEGORIES.find((c) => c.major === searchParams.major);
+
+  // 정확한 방장 확인(DB 대조)은 방 상세 페이지에서 하고, 여기 목록에서는 "이 방의
+  // 쿠키를 갖고 있는지"만 가볍게 확인해서 삭제 메뉴 노출 여부를 정한다 (방마다 DB를
+  // 조회하지 않아도 되어 빠르다). 실제 삭제 실행 시에는 서버 액션이 다시 한번
+  // DB 값과 정확히 대조한다.
+  const ownedRoomIds = new Set(
+    cookies()
+      .getAll()
+      .filter((c) => c.name.startsWith('host_'))
+      .map((c) => c.name.slice('host_'.length))
+  );
 
   return (
     <div className="space-y-8">
@@ -91,7 +107,7 @@ export default async function HomePage({
         )}
         <div className="grid gap-3 sm:grid-cols-2">
           {rooms.map((room) => (
-            <RoomCard key={room.id} room={room} />
+            <RoomCard key={room.id} room={room} isOwner={ownedRoomIds.has(room.id)} />
           ))}
         </div>
       </section>

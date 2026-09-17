@@ -3,6 +3,11 @@ import { cookies } from 'next/headers';
 import { getRoom, verifyRoomHostToken } from '@/lib/store';
 import { applyAction, updateApplicationStatusAction } from '@/lib/actions';
 import { Application, Room } from '@/lib/types';
+import DeleteRoomButton from '@/components/DeleteRoomButton';
+
+// 쿠키(cookies())로 방장 여부를 매 요청마다 새로 확인해야 하므로, 이 페이지는
+// 절대 빌드 시점에 정적으로 캐시되면 안 된다.
+export const dynamic = 'force-dynamic';
 
 const STATUS_LABEL: Record<Room['status'], string> = {
   open: '모집중',
@@ -27,7 +32,10 @@ export default async function RoomDetailPage({ params }: { params: { id: string 
           <span>{room.minor}</span>
           <span>· {room.mode === 'online' ? '온라인' : '오프라인'}</span>
         </div>
-        <h1 className="text-xl font-bold">{room.title}</h1>
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-xl font-bold">{room.title}</h1>
+          {isHost && <DeleteRoomButton roomId={room.id} />}
+        </div>
         <p className="text-sm text-slate-500 mt-2 whitespace-pre-wrap">{room.description}</p>
       </div>
 

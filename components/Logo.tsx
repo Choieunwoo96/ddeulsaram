@@ -1,5 +1,5 @@
 // 뜰사람 로고 — 별도 이미지 파일 없이 인라인 SVG로 그린 심볼.
-// "마주보는 두 칼(배틀·대결)"을 단순한 원 배지 안에 넣은 추상 마크.
+// 서로 맞닿은 두 개의 글러브(주먹 인사/friendly battle)를 원 배지 안에 넣은 마크.
 // variant="dark"(기본)는 밝은 배경(헤더 등)에서, variant="light"는 어두운/색 배경(배너 등)에서 사용.
 export default function Logo({
   className = 'w-8 h-8',
@@ -10,26 +10,37 @@ export default function Logo({
 }) {
   const ring = variant === 'light' ? '#ffffff' : '#4f46e5';
   const bg = variant === 'light' ? 'rgba(255,255,255,0.15)' : '#eef2ff';
-  const blade = variant === 'light' ? '#ffffff' : '#4f46e5';
+  const glove = variant === 'light' ? '#ffffff' : '#4f46e5';
 
   return (
     <svg
       viewBox="0 0 48 48"
       className={className}
-      fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
       <circle cx="24" cy="24" r="22" fill={bg} stroke={ring} strokeWidth="2" />
-      <g stroke={blade} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 14 L28 28" />
-        <path d="M14 14 L14 19" />
-        <path d="M14 14 L19 14" />
-        <path d="M34 34 L20 20" />
-        <path d="M34 34 L34 29" />
-        <path d="M34 34 L29 34" />
+
+      {/* 왼쪽 글러브 */}
+      <g fill={glove}>
+        <rect x="4" y="21" width="9" height="8" rx="3" />
+        <rect x="7" y="16" width="17" height="17" rx="8" />
+        <circle cx="14" cy="15" r="4.2" />
       </g>
-      <circle cx="24" cy="24" r="2.2" fill={blade} />
+
+      {/* 오른쪽 글러브 (왼쪽을 좌우 반전) */}
+      <g fill={glove} transform="scale(-1,1) translate(-48,0)">
+        <rect x="4" y="21" width="9" height="8" rx="3" />
+        <rect x="7" y="16" width="17" height="17" rx="8" />
+        <circle cx="14" cy="15" r="4.2" />
+      </g>
+
+      {/* 맞닿는 지점의 "펑" 하는 임팩트 표시 */}
+      <g stroke={ring} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="24" y1="10" x2="24" y2="14" />
+        <line x1="18" y1="12" x2="20.5" y2="15" />
+        <line x1="30" y1="12" x2="27.5" y2="15" />
+      </g>
     </svg>
   );
 }

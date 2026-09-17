@@ -1,5 +1,11 @@
+import { cookies } from 'next/headers';
 import { listQueue, listMatchesForNickname } from '@/lib/store';
 import MatchForm from '@/components/MatchForm';
+import QueueEntryMenu from '@/components/QueueEntryMenu';
+
+// 쿠키(cookies())로 "내가 등록한 대기열"인지 매 요청마다 새로 확인해야 하므로,
+// 이 페이지는 빌드 시점에 정적으로 캐시되면 안 된다.
+export const dynamic = 'force-dynamic';
 
 export default async function MatchPage({
   searchParams,
@@ -10,6 +16,15 @@ export default async function MatchPage({
   const myMatches = searchParams.nickname
     ? await listMatchesForNickname(searchParams.nickname)
     : [];
+
+  // 방 목록과 같은 방식: 쿠키 존재 여부로 가볍게 "내 등록"인지만 판단하고,
+  // 실제 삭제는 서버 액션에서 DB 값과 정확히 대조한다.
+  const ownedEntryIds = new Set(
+    cookies()
+      .getAll()
+      .filter((c) => c.name.startsWith('entry_'))
+      .map((c) => c.name.slice('entry_'.length))
+  );
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -27,12 +42,15 @@ export default async function MatchPage({
         <div className="space-y-2">
           {queue.length === 0 && <p className="text-sm text-slate-400">대기중인 사람이 없어요.</p>}
           {queue.map((q) => (
-            <div key={q.id} className="bg-white border rounded-lg p-3 text-sm flex justify-between">
+            <div key={q.id} className="bg-white border rounded-lg p-3 text-sm flex justify-between items-center gap-2">
               <span>
                 {q.nickname} · {q.major} / {q.minor} · {q.mode === 'online' ? '온라인' : '오프라인'}
               </span>
-              <span className="text-slate-400">
-                {q.region} {q.timeslot && `· ${q.timeslot}`}
+              <span className="flex items-center gap-2 text-slate-400">
+                <span>
+                  {q.region} {q.timeslot && `· ${q.timeslot}`}
+                </span>
+                {ownedEntryIds.has(q.id) && <QueueEntryMenu entryId={q.id} />}
               </span>
             </div>
           ))}

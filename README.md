@@ -42,6 +42,11 @@ app/
   layout.tsx              공통 레이아웃 (헤더/푸터/AdSense 안내)
 components/
   RoomCard.tsx            방 목록 카드
+  RoomCardMenu.tsx        방 카드의 점 3개(⋮) 삭제 메뉴 (방장에게만 표시)
+  DeleteRoomButton.tsx    방 상세 페이지의 삭제 버튼 (방장에게만 표시)
+  QueueEntryMenu.tsx      매칭 대기열 항목의 점 3개(⋮) 삭제 메뉴 (등록 본인에게만 표시)
+  MatchForm.tsx            매칭 등록 폼 (대/소분류 드롭다운)
+  Logo.tsx                  인라인 SVG 로고
   AdSlot.tsx               광고 영역 placeholder
   Field.tsx                 폼 라벨 wrapper
 lib/
@@ -66,9 +71,11 @@ DEPLOY.md                    GitHub/Supabase/Vercel 배포 단계별 가이드
   문제를 방지했고, 저장되는 값들도 항상 trim되어 저장됨
 - 방장이 수락(accepted)한 인원이 모집 인원(capacity)에 도달하면 방 상태가 자동으로
   `done`으로 바뀌고 홈 목록에서 사라짐 (`lib/store.ts`의 `autoCompleteRoomIfFull`)
-- 신청 수락/거절은 방을 만든 브라우저(방장)에서만 가능 — 로그인이 없는 프로토타입이라
-  방 생성 시 발급한 비밀 토큰을 httpOnly 쿠키로 저장해두고 서버 액션에서 확인함
-  (`lib/store.ts`의 `verifyRoomHostToken`, `supabase/migration_host_token.sql` 참고)
+- 신청 수락/거절, 방 삭제, 매칭 대기열 취소는 각각 그것을 만든 브라우저에서만 가능
+  — 로그인이 없는 프로토타입이라 생성 시 발급한 비밀 토큰을 httpOnly 쿠키로
+  저장해두고 서버 액션/라우트에서 확인함 (`lib/store.ts`의 `verifyRoomHostToken`,
+  `verifyQueueEntryToken`; 방 생성 직후 쿠키는 `app/api/rooms/[id]/claim/route.ts`를
+  거쳐서 심어짐 — 서버 액션 안에서 바로 심는 것보다 더 확실하게 동작함)
 - 카테고리별 이모지 아이콘 + 인라인 SVG 로고/배너 적용 (별도 이미지 파일 업로드 없이 동작)
 - Google AdSense는 실제 코드가 아니라 자리(placeholder)만 잡아둔 상태
 - 배포: Vercel + GitHub 연동, `git push origin main`으로 자동 배포 (`DEPLOY.md` 참고)
