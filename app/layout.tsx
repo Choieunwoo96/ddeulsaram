@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 import './globals.css';
 
 export const metadata = {
@@ -14,7 +15,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-screen bg-slate-50 text-slate-900">
         <header className="border-b bg-white sticky top-0 z-10">
           <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between">
-            <Link href="/" className="text-xl font-bold text-indigo-600">
+            <Link href="/" className="flex items-center gap-2 text-xl font-bold text-indigo-600">
+              <Logo className="w-8 h-8" />
               뜰사람
             </Link>
             <nav className="flex gap-4 text-sm font-medium text-slate-600">

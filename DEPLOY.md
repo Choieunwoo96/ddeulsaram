@@ -58,11 +58,16 @@
 4. 이 프로젝트 폴더 안의 `supabase/schema.sql` 파일을 메모장으로 열어서 내용 전체를 복사 →
    SQL Editor에 붙여넣고 **Run** 버튼 클릭
    - "Success. No rows returned" 같은 메시지가 뜨면 성공입니다. (테이블 4개가 만들어졌어요)
-5. 왼쪽 메뉴에서 **Project Settings**(톱니바퀴) → **API** 클릭
+5. Project URL과 키는 화면 위쪽 **Connect** 버튼(또는 **Project Settings → API**)을 누르면
+   나오는 창에서 확인할 수 있습니다. (Supabase가 최근에 이 화면 위치를 바꿔서, 예전
+   가이드와 메뉴 이름이 조금 다를 수 있습니다.)
    - **Project URL** 복사해서 메모장에 저장
-   - **Project API keys** 항목에서 `service_role` 키(비밀, secret) 복사해서 메모장에 저장
-   - ⚠️ `service_role` 키는 절대 다른 사람에게 보여주거나 GitHub에 올리면 안 됩니다.
-     (`anon` `public` 키가 아니라 `service_role` 키를 써야 합니다 — 헷갈리지 않게 주의)
+   - **API keys** 중 **secret**(예전 이름: `service_role`) 키 — 복사 아이콘을 눌러 그대로
+     복사해서 메모장에 저장 (Notepad에 붙였다가 다시 복사하면 줄바꿈이 섞여 들어갈 수
+     있으니, 가능하면 복사 아이콘 → 바로 Vercel에 붙여넣기를 권장합니다)
+   - ⚠️ **secret**(`service_role`) 키는 절대 다른 사람에게 보여주거나 GitHub에 올리면
+     안 됩니다. (**publishable**/`anon`/`public` 키가 아니라 **secret**/`service_role`
+     키를 써야 합니다 — 헷갈리지 않게 주의)
 
 ---
 

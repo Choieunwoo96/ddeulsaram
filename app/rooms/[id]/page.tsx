@@ -1,9 +1,8 @@
 import { notFound } from 'next/navigation';
-import { getRoom } from '@/lib/store';
+import { cookies } from 'next/headers';
+import { getRoom, verifyRoomHostToken } from '@/lib/store';
 import { applyAction, updateApplicationStatusAction } from '@/lib/actions';
 import { Application, Room } from '@/lib/types';
-
-export const dynamic = 'force-dynamic';
 
 const STATUS_LABEL: Record<Room['status'], string> = {
   open: '모집중',
@@ -14,6 +13,9 @@ const STATUS_LABEL: Record<Room['status'], string> = {
 export default async function RoomDetailPage({ params }: { params: { id: string } }) {
   const room = await getRoom(params.id);
   if (!room) notFound();
+
+  const hostToken = cookies().get(`host_${room.id}`)?.value;
+  const isHost = await verifyRoomHostToken(room.id, hostToken);
 
   const applyWithId = applyAction.bind(null, room.id);
 
@@ -81,27 +83,51 @@ export default async function RoomDetailPage({ params }: { params: { id: string 
           <p className="text-sm text-slate-400">아직 신청자가 없어요.</p>
         )}
         {room.applications.map((application) => (
-          <ApplicationRow key={application.id} roomId={room.id} application={application} />
+          <ApplicationRow
+            key={application.id}
+            roomId={room.id}
+            application={application}
+            isHost={isHost}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function ApplicationRow({ roomId, application }: { roomId: string; application: Application }) {
+function ApplicationRow({
+  roomId,
+  application,
+  isHost,
+}: {
+  roomId: string;
+  application: Application;
+  isHost: boolean;
+}) {
   return (
     <div className="bg-white border rounded-lg p-3 flex items-center justify-between text-sm">
       <div>
         <span className="font-medium">{application.nickname}</span>
         <span className="text-slate-400 ml-2">{application.spec}</span>
       </div>
-      <StatusBadge roomId={roomId} application={application} />
+      <StatusBadge roomId={roomId} application={application} isHost={isHost} />
     </div>
   );
 }
 
-function StatusBadge({ roomId, application }: { roomId: string; application: Application }) {
+function StatusBadge({
+  roomId,
+  application,
+  isHost,
+}: {
+  roomId: string;
+  application: Application;
+  isHost: boolean;
+}) {
   if (application.status === 'pending') {
+    if (!isHost) {
+      return <span className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-500">대기중</span>;
+    }
     const accept = updateApplicationStatusAction.bind(null, roomId, application.id, 'accepted');
     const reject = updateApplicationStatusAction.bind(null, roomId, application.id, 'rejected');
     return (

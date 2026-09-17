@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { supabase } from './supabaseClient';
 import { Room, QueueEntry, MatchRecord, Application, Mode } from './types';
 
@@ -74,11 +75,13 @@ export async function listRooms(filter?: {
   major?: string;
   minor?: string;
   mode?: string;
+  status?: string;
 }): Promise<Room[]> {
   let query = supabase.from('rooms').select('*').order('created_at', { ascending: false });
   if (filter?.major) query = query.eq('major', filter.major);
   if (filter?.minor) query = query.eq('minor', filter.minor);
   if (filter?.mode) query = query.eq('mode', filter.mode);
+  if (filter?.status) query = query.eq('status', filter.status);
 
   const { data, error } = await query;
   if (error) throw error;
@@ -106,10 +109,17 @@ export async function getRoom(id: string): Promise<Room | undefined> {
   return room;
 }
 
+/**
+ * 방을 생성하고, 방장 본인 확인용 비밀 토큰(hostToken)도 같이 발급한다.
+ * hostToken은 DB의 host_token 컬럼에 저장되고, 호출한 쪽(서버 액션)이 이 값을
+ * 브라우저 쿠키에 저장해서 "이 브라우저 = 방장"임을 나중에 확인하는 데 쓴다.
+ * 절대 Room 타입/클라이언트 쪽으로 넘기지 않고 이 함수를 호출한 서버 코드만 사용한다.
+ */
 export async function createRoom(
   input: Omit<Room, 'id' | 'applications' | 'status' | 'createdAt'>
-): Promise<Room> {
+): Promise<{ room: Room; hostToken: string }> {
   const id = genId('r');
+  const hostToken = randomUUID();
   const { data, error } = await supabase
     .from('rooms')
     .insert({
@@ -125,11 +135,31 @@ export async function createRoom(
       description: input.description,
       host_nickname: input.hostNickname,
       status: 'open',
+      host_token: hostToken,
     })
     .select()
     .single();
   if (error) throw error;
-  return mapRoomRow(data);
+  return { room: mapRoomRow(data), hostToken };
+}
+
+/**
+ * 이 브라우저(쿠키로 넘어온 token)가 실제로 이 방의 방장인지 확인한다.
+ * token이 없거나 DB에 저장된 host_token과 다르면 false.
+ * (예전 마이그레이션 이전에 만들어진 방은 host_token이 비어있어서 항상 false.)
+ */
+export async function verifyRoomHostToken(
+  roomId: string,
+  token: string | undefined
+): Promise<boolean> {
+  if (!token) return false;
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('host_token')
+    .eq('id', roomId)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data?.host_token && data.host_token === token;
 }
 
 export async function applyToRoom(
@@ -158,6 +188,35 @@ export async function updateApplicationStatus(
     .eq('id', appId)
     .eq('room_id', roomId);
   if (error) throw error;
+}
+
+/**
+ * 수락된(accepted) 신청자 수가 방의 모집 인원(capacity)에 도달하면
+ * 방 상태를 'done'으로 자동 전환한다. 'done' 상태인 방은 홈 목록에서 빠진다.
+ */
+export async function autoCompleteRoomIfFull(roomId: string) {
+  const { data: room, error: roomError } = await supabase
+    .from('rooms')
+    .select('capacity, status')
+    .eq('id', roomId)
+    .maybeSingle();
+  if (roomError) throw roomError;
+  if (!room || room.status !== 'open') return;
+
+  const { count, error: countError } = await supabase
+    .from('applications')
+    .select('id', { count: 'exact', head: true })
+    .eq('room_id', roomId)
+    .eq('status', 'accepted');
+  if (countError) throw countError;
+
+  if ((count ?? 0) >= room.capacity) {
+    const { error: updateError } = await supabase
+      .from('rooms')
+      .update({ status: 'done' })
+      .eq('id', roomId);
+    if (updateError) throw updateError;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -192,14 +251,21 @@ export async function listMatchesForNickname(nickname: string): Promise<MatchRec
 export async function addQueueEntry(
   input: Omit<QueueEntry, 'id' | 'createdAt'>
 ): Promise<{ entry: QueueEntry; match?: MatchRecord }> {
+  // 저장/검색 양쪽 다 trim된 값을 써야 "서울 "과 "서울"처럼 공백 하나 때문에
+  // 매칭이 실패하는 걸 막을 수 있다.
+  const nickname = input.nickname.trim();
+  const region = input.region.trim();
+  const timeslot = input.timeslot.trim();
+  const note = input.note.trim();
+
   const { data: candidates, error: findError } = await supabase
     .from('queue_entries')
     .select('*')
     .eq('major', input.major)
     .eq('minor', input.minor)
     .eq('mode', input.mode)
-    .ilike('region', input.region.trim())
-    .neq('nickname', input.nickname)
+    .ilike('region', region)
+    .neq('nickname', nickname)
     .order('created_at', { ascending: true })
     .limit(1);
   if (findError) throw findError;
@@ -209,13 +275,13 @@ export async function addQueueEntry(
     .from('queue_entries')
     .insert({
       id,
-      nickname: input.nickname,
+      nickname,
       major: input.major,
       minor: input.minor,
       mode: input.mode,
-      region: input.region,
-      timeslot: input.timeslot,
-      note: input.note,
+      region,
+      timeslot,
+      note,
     })
     .select()
     .single();

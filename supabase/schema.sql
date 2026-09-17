@@ -14,6 +14,7 @@ create table if not exists rooms (
   description text not null default '',
   host_nickname text not null,
   status text not null default 'open' check (status in ('open', 'closed', 'done')),
+  host_token text, -- 방장 본인 확인용 비밀 토큰 (신청 수락/거절 권한 체크에 사용, 브라우저에는 쿠키로만 저장됨)
   created_at timestamptz not null default now()
 );
 

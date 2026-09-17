@@ -61,7 +61,15 @@ DEPLOY.md                    GitHub/Supabase/Vercel 배포 단계별 가이드
 - 로그인/회원가입 없음 — 닉네임을 매번 입력하는 방식 (프로토타입 수준)
 - 데이터는 Supabase(PostgreSQL)에 저장 — `supabase/schema.sql`로 테이블 생성
 - 자동매칭은 "같은 대/소분류 + 같은 온/오프라인 + 같은 지역(서버)"이면 즉시 매칭되는
-  단순 규칙 기반 (실력/티어/시간대 유사도는 아직 반영 안 함)
+  단순 규칙 기반 (실력/티어/시간대 유사도는 아직 반영 안 함). 소분류는 자유입력이
+  아니라 드롭다운(`components/MatchForm.tsx`)이라 오타/공백 때문에 매칭이 안 걸리는
+  문제를 방지했고, 저장되는 값들도 항상 trim되어 저장됨
+- 방장이 수락(accepted)한 인원이 모집 인원(capacity)에 도달하면 방 상태가 자동으로
+  `done`으로 바뀌고 홈 목록에서 사라짐 (`lib/store.ts`의 `autoCompleteRoomIfFull`)
+- 신청 수락/거절은 방을 만든 브라우저(방장)에서만 가능 — 로그인이 없는 프로토타입이라
+  방 생성 시 발급한 비밀 토큰을 httpOnly 쿠키로 저장해두고 서버 액션에서 확인함
+  (`lib/store.ts`의 `verifyRoomHostToken`, `supabase/migration_host_token.sql` 참고)
+- 카테고리별 이모지 아이콘 + 인라인 SVG 로고/배너 적용 (별도 이미지 파일 업로드 없이 동작)
 - Google AdSense는 실제 코드가 아니라 자리(placeholder)만 잡아둔 상태
 - 배포: Vercel + GitHub 연동, `git push origin main`으로 자동 배포 (`DEPLOY.md` 참고)
 

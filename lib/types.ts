@@ -3,6 +3,7 @@ export type Mode = 'online' | 'offline';
 export interface Category {
   major: string;
   minors: string[];
+  icon: string; // 이모지 아이콘 (별도 이미지 호스팅 없이 가볍게 표시)
 }
 
 export interface Application {

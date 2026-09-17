@@ -3,8 +3,7 @@ import { CATEGORIES } from '@/lib/categories';
 import { listRooms } from '@/lib/store';
 import AdSlot from '@/components/AdSlot';
 import RoomCard from '@/components/RoomCard';
-
-export const dynamic = 'force-dynamic';
+import Logo from '@/components/Logo';
 
 export default async function HomePage({
   searchParams,
@@ -15,16 +14,20 @@ export default async function HomePage({
     major: searchParams.major,
     minor: searchParams.minor,
     mode: searchParams.mode,
+    status: 'open',
   });
   const selectedMajor = CATEGORIES.find((c) => c.major === searchParams.major);
 
   return (
     <div className="space-y-8">
-      <section>
-        <h1 className="text-2xl font-bold mb-1">배틀 상대를 구해보세요</h1>
-        <p className="text-slate-500 text-sm">
-          온라인 게임부터 오락실, 오프라인 액티비티까지 — 방을 만들거나 참가해보세요.
-        </p>
+      <section className="rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-500 text-white px-6 py-8 flex items-center gap-4">
+        <Logo className="w-14 h-14 shrink-0" variant="light" />
+        <div>
+          <h1 className="text-2xl font-bold mb-1">배틀 상대를 구해보세요</h1>
+          <p className="text-indigo-100 text-sm">
+            온라인 게임부터 오락실, 오프라인 액티비티까지 — 방을 만들거나 참가해보세요.
+          </p>
+        </div>
       </section>
 
       <AdSlot />
@@ -52,6 +55,7 @@ export default async function HomePage({
                   : 'bg-white border-slate-200 text-slate-600'
               }`}
             >
+              <span className="mr-1">{c.icon}</span>
               {c.major}
             </Link>
           ))}

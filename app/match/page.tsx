@@ -1,8 +1,5 @@
-import { CATEGORIES } from '@/lib/categories';
 import { listQueue, listMatchesForNickname } from '@/lib/store';
-import { addQueueEntryAction } from '@/lib/actions';
-
-export const dynamic = 'force-dynamic';
+import MatchForm from '@/components/MatchForm';
 
 export default async function MatchPage({
   searchParams,
@@ -23,36 +20,7 @@ export default async function MatchPage({
         </p>
       </div>
 
-      <form action={addQueueEntryAction} className="bg-white border rounded-lg p-4 space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <input name="nickname" required placeholder="닉네임" className="input" />
-          <select name="mode" className="input">
-            <option value="online">온라인</option>
-            <option value="offline">오프라인</option>
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <select name="major" className="input">
-            {CATEGORIES.map((c) => (
-              <option key={c.major} value={c.major}>
-                {c.major}
-              </option>
-            ))}
-          </select>
-          <input name="minor" required placeholder="소분류 (예: 철권)" className="input" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <input name="region" required placeholder="지역 또는 서버명" className="input" />
-          <input name="timeslot" placeholder="가능 시간대 (예: 평일 저녁)" className="input" />
-        </div>
-        <input name="note" placeholder="추가 메모 (선택)" className="input" />
-        <button
-          type="submit"
-          className="w-full bg-indigo-600 text-white rounded-lg py-2.5 font-semibold hover:bg-indigo-700"
-        >
-          매칭 대기열 등록
-        </button>
-      </form>
+      <MatchForm />
 
       <div>
         <h2 className="font-semibold text-sm text-slate-500 mb-2">현재 대기열 ({queue.length}명)</h2>
