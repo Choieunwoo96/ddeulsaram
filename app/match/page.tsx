@@ -2,6 +2,8 @@ import { CATEGORIES } from '@/lib/categories';
 import { listQueue, listMatchesForNickname } from '@/lib/store';
 import { addQueueEntryAction } from '@/lib/actions';
 
+export const dynamic = 'force-dynamic';
+
 export default async function MatchPage({
   searchParams,
 }: {

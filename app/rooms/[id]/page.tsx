@@ -3,6 +3,8 @@ import { getRoom } from '@/lib/store';
 import { applyAction, updateApplicationStatusAction } from '@/lib/actions';
 import { Application, Room } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 const STATUS_LABEL: Record<Room['status'], string> = {
   open: '모집중',
   closed: '마감',

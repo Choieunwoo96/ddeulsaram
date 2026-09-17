@@ -4,6 +4,8 @@ import { listRooms } from '@/lib/store';
 import AdSlot from '@/components/AdSlot';
 import RoomCard from '@/components/RoomCard';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage({
   searchParams,
 }: {
