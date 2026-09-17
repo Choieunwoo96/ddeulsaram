@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
+import type { Metadata } from 'next';
 import { getRoom, verifyRoomHostToken } from '@/lib/store';
 import { applyAction, updateApplicationStatusAction } from '@/lib/actions';
 import { Application, Room } from '@/lib/types';
@@ -8,6 +9,29 @@ import DeleteRoomButton from '@/components/DeleteRoomButton';
 // 쿠키(cookies())로 방장 여부를 매 요청마다 새로 확인해야 하므로, 이 페이지는
 // 절대 빌드 시점에 정적으로 캐시되면 안 된다.
 export const dynamic = 'force-dynamic';
+
+// 방 상세 페이지는 실제 검색 유입이 들어올 수 있는 핵심 페이지라, 방 제목/내용으로
+// 검색엔진에 노출되는 제목·설명을 방마다 다르게 만들어준다.
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string };
+}): Promise<Metadata> {
+  const room = await getRoom(params.id);
+  if (!room) return {};
+
+  const title = `${room.title} - ${room.major}/${room.minor} 상대 모집`;
+  const description =
+    room.description?.trim().slice(0, 150) ||
+    `${room.major} · ${room.minor} · ${room.mode === 'online' ? '온라인' : '오프라인'} 배틀 상대를 구하는 방입니다.`;
+
+  return {
+    title,
+    description,
+    openGraph: { title, description },
+    twitter: { title, description },
+  };
+}
 
 const STATUS_LABEL: Record<Room['status'], string> = {
   open: '모집중',

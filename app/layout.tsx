@@ -1,12 +1,43 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
 import './globals.css';
 
-export const metadata = {
-  title: '뜰사람 - 온오프라인 배틀 매칭',
-  description:
-    '온라인 게임부터 오락실, 오프라인 액티비티까지 — 배틀 상대를 구하는 매칭 플랫폼',
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} - 온오프라인 배틀 매칭`,
+    // 하위 페이지에서 title만 짧게 넘기면 "짧은제목 | 뜰사람" 형태로 자동 완성된다.
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'ko_KR',
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} - 온오프라인 배틀 매칭`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+  },
+  twitter: {
+    card: 'summary',
+    title: `${SITE_NAME} - 온오프라인 배틀 매칭`,
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  // Google Search Console에서 소유권 확인을 받으면, 발급된 값을
+  // NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION 환경변수로 등록하세요.
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+    : undefined,
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -42,9 +73,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           2) components/AdSlot.tsx의 placeholder를 실제 <ins class="adsbygoogle"> 태그로 교체
         */}
 
-        <footer className="mx-auto max-w-5xl px-4 py-8 text-xs text-slate-400">
-          뜰사람은 배틀 상대를 구하는 매칭 서비스입니다. 금전이 걸린 내기·도박
-          성격의 게시물은 금지됩니다.
+        <footer className="mx-auto max-w-5xl px-4 py-8 text-xs text-slate-400 space-y-2">
+          <p>
+            뜰사람은 배틀 상대를 구하는 매칭 서비스입니다. 금전이 걸린 내기·도박
+            성격의 게시물은 금지됩니다.
+          </p>
+          <nav className="flex gap-3">
+            <Link href="/privacy" className="hover:text-slate-600 underline">
+              개인정보처리방침
+            </Link>
+            <Link href="/terms" className="hover:text-slate-600 underline">
+              이용약관
+            </Link>
+          </nav>
         </footer>
       </body>
     </html>

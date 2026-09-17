@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
+import type { Metadata } from 'next';
 import { CATEGORIES } from '@/lib/categories';
 import { listRooms } from '@/lib/store';
 import AdSlot from '@/components/AdSlot';
@@ -10,10 +11,34 @@ import Logo from '@/components/Logo';
 // 이 페이지는 빌드 시점에 정적으로 캐시되면 안 된다.
 export const dynamic = 'force-dynamic';
 
+type HomeSearchParams = { major?: string; minor?: string; mode?: string };
+
+// 카테고리로 필터링해서 들어오면 그 카테고리 이름이 들어간 제목/설명을 붙여서
+// "리그오브레전드 상대 구하기"처럼 검색에 더 잘 걸리게 한다.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: HomeSearchParams;
+}): Promise<Metadata> {
+  if (searchParams.minor) {
+    return {
+      title: `${searchParams.minor} 상대 구하기`,
+      description: `${searchParams.minor} 배틀 상대를 지금 구해보세요. 뜰사람에서 방을 만들거나 자동매칭에 등록할 수 있어요.`,
+    };
+  }
+  if (searchParams.major) {
+    return {
+      title: `${searchParams.major} 상대 구하기`,
+      description: `${searchParams.major} 카테고리에서 배틀 상대를 찾아보세요.`,
+    };
+  }
+  return {};
+}
+
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: { major?: string; minor?: string; mode?: string };
+  searchParams: HomeSearchParams;
 }) {
   const rooms = await listRooms({
     major: searchParams.major,

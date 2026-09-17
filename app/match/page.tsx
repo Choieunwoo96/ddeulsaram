@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import type { Metadata } from 'next';
 import { listQueue, listMatchesForNickname } from '@/lib/store';
 import MatchForm from '@/components/MatchForm';
 import QueueEntryMenu from '@/components/QueueEntryMenu';
@@ -6,6 +7,12 @@ import QueueEntryMenu from '@/components/QueueEntryMenu';
 // 쿠키(cookies())로 "내가 등록한 대기열"인지 매 요청마다 새로 확인해야 하므로,
 // 이 페이지는 빌드 시점에 정적으로 캐시되면 안 된다.
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: '자동매칭 대기열',
+  description:
+    '조건을 등록해두면 같은 종목·지역·진행방식의 상대가 나타났을 때 자동으로 매칭돼요.',
+};
 
 export default async function MatchPage({
   searchParams,

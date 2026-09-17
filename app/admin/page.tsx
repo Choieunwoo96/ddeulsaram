@@ -11,10 +11,22 @@ import AdminDeleteButton from '@/components/AdminDeleteButton';
 // 로그인 상태를 쿠키로 매 요청마다 확인해야 하므로 정적 캐시되면 안 된다.
 export const dynamic = 'force-dynamic';
 
-export default async function AdminPage() {
+const LOGIN_ERROR_MESSAGE: Record<string, string> = {
+  wrong_password: '비밀번호가 올바르지 않아요. 다시 입력해주세요.',
+  no_password_env:
+    'ADMIN_PASSWORD 환경변수가 설정되어 있지 않아요. Vercel(또는 .env.local)에 먼저 추가해주세요.',
+};
+
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: { error?: string };
+}) {
   const authed = isAdminAuthenticated();
 
   if (!authed) {
+    const errorMessage = searchParams.error ? LOGIN_ERROR_MESSAGE[searchParams.error] : undefined;
+
     return (
       <div className="max-w-sm mx-auto mt-12 space-y-4">
         <div>
@@ -23,6 +35,11 @@ export default async function AdminPage() {
             비밀번호를 아는 사람만 모든 방·매칭 대기열을 정리할 수 있어요.
           </p>
         </div>
+        {errorMessage && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {errorMessage}
+          </p>
+        )}
         <form action={adminLoginAction} className="space-y-3">
           <input
             type="password"

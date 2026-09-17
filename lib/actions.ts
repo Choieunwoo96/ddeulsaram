@@ -156,17 +156,17 @@ export async function deleteQueueEntryAction(entryId: string, formData: FormData
 // ---------------------------------------------------------------------------
 
 export async function adminLoginAction(formData: FormData) {
-  const password = String(formData.get('password') || '');
+  const password = String(formData.get('password') || '').trim();
   const correctPassword = process.env.ADMIN_PASSWORD?.trim();
 
+  // 비밀번호가 틀렸거나 환경변수 자체가 없으면, 화면이 깨지는 예외를 던지는 대신
+  // 안내 문구가 뜨는 로그인 화면으로 다시 보낸다. (쿠키를 심지 않는 경로라
+  // redirect()를 같이 써도 안전하다.)
   if (!correctPassword) {
-    throw new Error(
-      'ADMIN_PASSWORD 환경변수가 설정되어 있지 않아요. Vercel(또는 .env.local)에 먼저 추가해주세요.'
-    );
+    redirect('/admin?error=no_password_env');
   }
-
   if (password !== correctPassword) {
-    throw new Error('비밀번호가 올바르지 않아요.');
+    redirect('/admin?error=wrong_password');
   }
 
   // 리다이렉트 없이 같은 페이지에서 바로 처리되는 액션이라 여기서 쿠키를 직접
@@ -190,7 +190,7 @@ export async function adminLogoutAction() {
 
 export async function adminDeleteRoomAction(roomId: string, formData: FormData) {
   if (!isAdminAuthenticated()) {
-    throw new Error('관리자 로그인이 필요해요.');
+    redirect('/admin?error=wrong_password');
   }
   await store.deleteRoom(roomId);
   revalidatePath('/admin');
@@ -199,7 +199,7 @@ export async function adminDeleteRoomAction(roomId: string, formData: FormData) 
 
 export async function adminDeleteQueueEntryAction(entryId: string, formData: FormData) {
   if (!isAdminAuthenticated()) {
-    throw new Error('관리자 로그인이 필요해요.');
+    redirect('/admin?error=wrong_password');
   }
   await store.deleteQueueEntry(entryId);
   revalidatePath('/admin');
