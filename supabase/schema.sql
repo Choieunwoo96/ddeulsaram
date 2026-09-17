@@ -59,3 +59,43 @@ alter table rooms enable row level security;
 alter table applications enable row level security;
 alter table queue_entries enable row level security;
 alter table matches enable row level security;
+
+-- 회원가입/로그인 (Supabase Auth) 지원용 profiles 테이블.
+-- 자세한 설명은 supabase/migration_3_auth.sql 참고.
+create table if not exists profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  nickname text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table profiles enable row level security;
+
+drop policy if exists "프로필은 누구나 조회 가능" on profiles;
+create policy "프로필은 누구나 조회 가능"
+  on profiles for select
+  using (true);
+
+drop policy if exists "본인 프로필만 수정 가능" on profiles;
+create policy "본인 프로필만 수정 가능"
+  on profiles for update
+  using (auth.uid() = id);
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, nickname)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'nickname', split_part(new.email, '@', 1))
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();

@@ -57,7 +57,8 @@
 3. 왼쪽 메뉴에서 **SQL Editor** 클릭 → **New query**
 4. 이 프로젝트 폴더 안의 `supabase/schema.sql` 파일을 메모장으로 열어서 내용 전체를 복사 →
    SQL Editor에 붙여넣고 **Run** 버튼 클릭
-   - "Success. No rows returned" 같은 메시지가 뜨면 성공입니다. (테이블 4개가 만들어졌어요)
+   - "Success. No rows returned" 같은 메시지가 뜨면 성공입니다. (테이블 5개가 만들어졌어요 —
+     회원가입/로그인용 `profiles` 테이블 포함)
 5. Project URL과 키는 화면 위쪽 **Connect** 버튼(또는 **Project Settings → API**)을 누르면
    나오는 창에서 확인할 수 있습니다. (Supabase가 최근에 이 화면 위치를 바꿔서, 예전
    가이드와 메뉴 이름이 조금 다를 수 있습니다.)
@@ -65,9 +66,18 @@
    - **API keys** 중 **secret**(예전 이름: `service_role`) 키 — 복사 아이콘을 눌러 그대로
      복사해서 메모장에 저장 (Notepad에 붙였다가 다시 복사하면 줄바꿈이 섞여 들어갈 수
      있으니, 가능하면 복사 아이콘 → 바로 Vercel에 붙여넣기를 권장합니다)
+   - **API keys** 중 **anon**(예전 이름: `anon`/`public`, 새 화면에서는 **publishable** 이라고
+     나올 수도 있어요) 키도 똑같이 복사해서 메모장에 저장해두세요 — 회원가입/로그인
+     기능에 필요합니다.
    - ⚠️ **secret**(`service_role`) 키는 절대 다른 사람에게 보여주거나 GitHub에 올리면
-     안 됩니다. (**publishable**/`anon`/`public` 키가 아니라 **secret**/`service_role`
-     키를 써야 합니다 — 헷갈리지 않게 주의)
+     안 됩니다. **anon**(`publishable`) 키는 원래 외부에 노출돼도 되는 종류의 키라
+     상대적으로 안전하지만, 그래도 두 키를 헷갈리지 않게 주의하세요.
+6. 회원가입 시 보내는 이메일 인증 링크가 정확한 주소로 오게 하려면: 왼쪽 메뉴 **Authentication**
+   → **URL Configuration** 으로 이동해서
+   - **Site URL**: 실제 배포 주소 (예: `https://ddeulsaram96.vercel.app`)
+   - **Redirect URLs**: 같은 주소 뒤에 `/auth/callback`을 붙인 값
+     (예: `https://ddeulsaram96.vercel.app/auth/callback`) 을 추가로 등록해주세요.
+   - 나중에 실제 도메인을 연결하면 이 두 값도 새 도메인으로 바꿔줘야 합니다.
 
 ---
 
@@ -76,12 +86,13 @@
 1. https://vercel.com 접속 → **Sign Up** → GitHub 계정으로 로그인
 2. **Add New...** → **Project**
 3. 방금 만든 `ddeulsaram` 저장소를 찾아서 **Import**
-4. **Environment Variables** 섹션에서 아래 두 개를 추가:
+4. **Environment Variables** 섹션에서 아래 항목들을 추가:
 
    | Name | Value |
    |---|---|
    | `SUPABASE_URL` | (2단계에서 복사한 Project URL) |
    | `SUPABASE_SERVICE_ROLE_KEY` | (2단계에서 복사한 service_role 키) |
+   | `SUPABASE_ANON_KEY` | (2단계에서 복사한 anon/publishable 키 — 회원가입/로그인용) |
 
 5. **Deploy** 클릭 → 1~2분 기다리면 완료
 6. 완료되면 `https://ddeulsaram-xxxx.vercel.app` 같은 주소가 생깁니다. 클릭해서 접속해보세요.
@@ -101,6 +112,7 @@
 ```
 SUPABASE_URL=여러분의 Project URL
 SUPABASE_SERVICE_ROLE_KEY=여러분의 service_role 키
+SUPABASE_ANON_KEY=여러분의 anon(publishable) 키
 ```
 
 그 다음:

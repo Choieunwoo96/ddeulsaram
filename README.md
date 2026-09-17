@@ -40,33 +40,46 @@ app/
   rooms/[id]/page.tsx    방 상세 + 참가 신청 / 수락·거절
   match/page.tsx          자동매칭 대기열 등록 + 결과 확인
   admin/page.tsx           관리자 전용 방/대기열 삭제 페이지 (비밀번호 보호)
+  login/page.tsx            로그인 페이지
+  signup/page.tsx           회원가입 페이지
+  auth/callback/route.ts    이메일 인증 링크(추후 구글/카카오 로그인도) 처리
   api/rooms/[id]/claim/    방 생성 직후 방장 쿠키를 확실하게 심어주는 라우트
-  layout.tsx              공통 레이아웃 (헤더/푸터/AdSense 안내)
+  layout.tsx              공통 레이아웃 (헤더/푸터/AdSense 안내, 로그인 상태 표시)
 components/
   RoomCard.tsx            방 목록 카드
   RoomCardMenu.tsx        방 카드의 점 3개(⋮) 삭제 메뉴 (방장에게만 표시)
   DeleteRoomButton.tsx    방 상세 페이지의 삭제 버튼 (방장에게만 표시)
   QueueEntryMenu.tsx      매칭 대기열 항목의 점 3개(⋮) 삭제 메뉴 (등록 본인에게만 표시)
   MatchForm.tsx            매칭 등록 폼 (대/소분류 드롭다운)
+  LoginForm.tsx             로그인 폼 (클라이언트 컴포넌트)
+  SignupForm.tsx            회원가입 폼 (클라이언트 컴포넌트)
   Logo.tsx                  인라인 SVG 로고
   AdSlot.tsx               광고 영역 placeholder
   Field.tsx                 폼 라벨 wrapper
 lib/
   types.ts                 타입 정의
   categories.ts            대/소분류 카테고리 데이터
-  supabaseClient.ts        Supabase 서버 클라이언트 (service_role 키 사용)
+  supabaseClient.ts        Supabase 서버 클라이언트 (service_role 키 사용, 방/매칭 데이터용)
+  supabase/server.ts        Supabase Auth 서버 클라이언트 (anon 키 + 쿠키 세션, 로그인용)
   store.ts                  데이터 저장/조회 로직 (Supabase/PostgreSQL 기반)
   actions.ts                방 생성/신청/매칭/관리자 등 서버 액션
+  auth-actions.ts           회원가입/로그인/로그아웃 서버 액션
   admin.ts                  관리자 로그인 상태 확인 (ADMIN_PASSWORD 환경변수 사용)
+middleware.ts                모든 요청마다 로그인 세션을 갱신해주는 미들웨어
 supabase/
-  schema.sql                Supabase에 실행할 테이블 생성 SQL
+  schema.sql                Supabase에 실행할 테이블 생성 SQL (신규 프로젝트용, profiles 포함)
+  migration_3_auth.sql      기존 프로젝트에 회원가입/로그인 기능을 추가하는 SQL
 .env.local.example          로컬 실행용 환경변수 템플릿
 DEPLOY.md                    GitHub/Supabase/Vercel 배포 단계별 가이드
 ```
 
 ## 지금 상태 (MVP)
 
-- 로그인/회원가입 없음 — 닉네임을 매번 입력하는 방식 (프로토타입 수준)
+- **회원가입/로그인 있음** (Supabase Auth 기반) — 이메일+비밀번호+닉네임으로 가입.
+  `SUPABASE_ANON_KEY` 환경변수를 설정해야 켜지고, 안 켜놨으면 로그인/회원가입 버튼을
+  눌러도 "아직 설정 안 됨" 안내만 뜨고 나머지 기능(방 만들기, 매칭 등)은 예전처럼
+  닉네임 직접 입력 방식으로 정상 작동함. 방 만들기/매칭 신청 자체는 아직 로그인
+  여부와 상관없이 닉네임을 입력하는 방식 그대로임 (로그인 연동은 다음 단계 예정).
 - 데이터는 Supabase(PostgreSQL)에 저장 — `supabase/schema.sql`로 테이블 생성
 - 자동매칭은 "같은 대/소분류 + 같은 온/오프라인 + 같은 지역(서버)"이면 즉시 매칭되는
   단순 규칙 기반 (실력/티어/시간대 유사도는 아직 반영 안 함). 소분류는 자유입력이
@@ -87,9 +100,10 @@ DEPLOY.md                    GitHub/Supabase/Vercel 배포 단계별 가이드
 
 ## 실제 서비스로 더 키우기 전에 고려할 것
 
-1. **회원가입/로그인 붙이기**
-   Supabase Auth를 쓰면 비교적 빠르게 붙일 수 있습니다. 지금은 닉네임을
-   그냥 텍스트로 입력받기 때문에 도용/사칭이 가능한 상태입니다.
+1. **방 만들기/매칭 신청에 로그인 연동하기**
+   지금은 로그인 기능만 따로 붙은 상태이고, 방 만들기/신청/매칭 폼은 여전히
+   닉네임을 직접 입력받습니다. 로그인한 사용자는 닉네임 입력칸을 없애고
+   자동으로 본인 닉네임을 쓰도록 연결하면 도용/사칭 문제를 줄일 수 있습니다.
 
 2. **Google AdSense 실제 연동**
    `app/layout.tsx`와 `components/AdSlot.tsx`에 안내 주석을 남겨뒀습니다.
@@ -107,7 +121,8 @@ DEPLOY.md                    GitHub/Supabase/Vercel 배포 단계별 가이드
 
 ## 다음에 요청하시면 좋을 것들
 
-- 로그인/회원가입 붙이기
+- 구글/카카오 소셜 로그인
+- 마이페이지, 검색, 글쓰기·게시판, 댓글·좋아요, 알림, 실시간 채팅
 - 신뢰 점수·리뷰·노쇼 신고 기능
 - 실력 기반 자동매칭 고도화
 - 실제 도메인 연결

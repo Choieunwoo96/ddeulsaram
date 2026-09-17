@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { signOutAction } from '@/lib/auth-actions';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -40,7 +42,13 @@ export const metadata: Metadata = {
     : undefined,
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // 로그인 기능이 아직 설정 안 됐으면(SUPABASE_ANON_KEY 없음) supabase가 null이고,
+  // 그럴 땐 항상 "로그아웃 상태"로 취급해서 로그인/회원가입 링크만 보여준다.
+  const supabase = createSupabaseServerClient();
+  const user = supabase ? (await supabase.auth.getUser()).data.user : null;
+  const nickname = (user?.user_metadata?.nickname as string | undefined) || user?.email;
+
   return (
     <html lang="ko">
       <body className="min-h-screen bg-slate-50 text-slate-900">
@@ -50,7 +58,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Logo className="w-8 h-8" />
               뜰사람
             </Link>
-            <nav className="flex gap-4 text-sm font-medium text-slate-600">
+            <nav className="flex items-center gap-4 text-sm font-medium text-slate-600">
               <Link href="/" className="hover:text-indigo-600">
                 방 목록
               </Link>
@@ -60,6 +68,28 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/match" className="hover:text-indigo-600">
                 자동매칭
               </Link>
+              {user ? (
+                <span className="flex items-center gap-3">
+                  <span className="text-slate-400">{nickname}님</span>
+                  <form action={signOutAction}>
+                    <button type="submit" className="hover:text-indigo-600">
+                      로그아웃
+                    </button>
+                  </form>
+                </span>
+              ) : (
+                <span className="flex items-center gap-3">
+                  <Link href="/login" className="hover:text-indigo-600">
+                    로그인
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="bg-indigo-600 text-white rounded-lg px-3 py-1.5 hover:bg-indigo-700"
+                  >
+                    회원가입
+                  </Link>
+                </span>
+              )}
             </nav>
           </div>
         </header>
