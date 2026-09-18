@@ -254,6 +254,23 @@ export async function applyToRoom(
 }
 
 /**
+ * 로그인한 사용자가 이 방에 이미 신청한 적이 있는지 확인한다. 참가 신청은
+ * 한 사람당 한 번만 가능해야 하므로, 쿠키(브라우저 단위 체크)와 별개로
+ * 로그인 계정 기준으로도 한 번 더 막아준다.
+ */
+export async function hasUserApplied(roomId: string, applicantUserId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('applications')
+    .select('id')
+    .eq('room_id', roomId)
+    .eq('applicant_user_id', applicantUserId)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+/**
  * 방에 신청이 들어왔을 때, 그 방의 방장에게 알림을 보내야 하는지 확인하기 위해
  * (로그인 상태로 만든 방이었다면) 방장의 user_id와 방 제목을 가져온다.
  */

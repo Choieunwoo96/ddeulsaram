@@ -22,6 +22,8 @@ async function currentUserId(): Promise<string | undefined> {
 const hostCookieName = (roomId: string) => `host_${roomId}`;
 // 매칭 대기열 항목을 등록한 본인 확인용 쿠키 이름 규칙 (삭제 권한 체크에 사용).
 const entryCookieName = (entryId: string) => `entry_${entryId}`;
+// 이 방에 이미 참가 신청을 했는지 확인하는 쿠키 이름 규칙 (중복 신청 방지용).
+const appliedCookieName = (roomId: string) => `applied_${roomId}`;
 
 const HOST_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -93,8 +95,26 @@ export async function applyAction(roomId: string, formData: FormData) {
   if (!nickname || !spec) {
     throw new Error('닉네임과 스펙을 입력해주세요.');
   }
+
+  // 방장 본인은 자기 방에 참가 신청을 할 수 없다.
+  const hostToken = cookies().get(hostCookieName(roomId))?.value;
+  if (await store.verifyRoomHostToken(roomId, hostToken)) {
+    throw new Error('본인이 만든 방에는 참가 신청을 할 수 없어요.');
+  }
+
+  // 참가 신청은 한 사람당 한 번만 가능하다. 브라우저 쿠키로 1차 체크(렉으로 인한
+  // 중복 클릭도 여기서 막힌다), 로그인 사용자는 계정 기준으로 한 번 더 체크한다.
+  if (cookies().get(appliedCookieName(roomId))?.value) {
+    throw new Error('이미 이 방에 신청하셨어요. 참가 신청은 한 사람당 한 번만 할 수 있어요.');
+  }
+
   const applicantUserId = await currentUserId();
+  if (applicantUserId && (await store.hasUserApplied(roomId, applicantUserId))) {
+    throw new Error('이미 이 방에 신청하셨어요. 참가 신청은 한 사람당 한 번만 할 수 있어요.');
+  }
+
   await store.applyToRoom(roomId, nickname, spec, applicantUserId);
+  cookies().set(appliedCookieName(roomId), '1', HOST_COOKIE_OPTIONS);
 
   // 방장이 로그인 상태로 방을 만들었다면(host_user_id가 있으면) 알림을 보낸다.
   const roomInfo = await store.getRoomNotifyInfo(roomId);

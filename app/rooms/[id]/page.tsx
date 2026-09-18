@@ -6,6 +6,7 @@ import { applyAction, updateApplicationStatusAction } from '@/lib/actions';
 import { Application, Room } from '@/lib/types';
 import DeleteRoomButton from '@/components/DeleteRoomButton';
 import ReportButton from '@/components/ReportButton';
+import ApplyForm from '@/components/ApplyForm';
 
 // 쿠키(cookies())로 방장 여부를 매 요청마다 새로 확인해야 하므로, 이 페이지는
 // 절대 빌드 시점에 정적으로 캐시되면 안 된다.
@@ -46,6 +47,7 @@ export default async function RoomDetailPage({ params }: { params: { id: string 
 
   const hostToken = cookies().get(`host_${room.id}`)?.value;
   const isHost = await verifyRoomHostToken(room.id, hostToken);
+  const hasApplied = !!cookies().get(`applied_${room.id}`)?.value;
 
   const applyWithId = applyAction.bind(null, room.id);
 
@@ -96,21 +98,15 @@ export default async function RoomDetailPage({ params }: { params: { id: string 
 
       <div className="bg-white border rounded-lg p-4 space-y-3">
         <h2 className="font-semibold text-sm">참가 신청</h2>
-        <form action={applyWithId} className="flex flex-col gap-2 sm:flex-row">
-          <input name="nickname" required placeholder="닉네임" className="input sm:w-32" />
-          <input
-            name="spec"
-            required
-            placeholder="실력/지역/나이대 등 간단히"
-            className="input flex-1"
-          />
-          <button
-            type="submit"
-            className="bg-indigo-600 text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-indigo-700 whitespace-nowrap"
-          >
-            신청하기
-          </button>
-        </form>
+        {isHost ? (
+          <p className="text-sm text-slate-400">본인이 만든 방에는 참가 신청할 수 없어요.</p>
+        ) : hasApplied ? (
+          <p className="text-sm text-slate-400">
+            이미 신청하셨어요. 참가 신청은 한 사람당 한 번만 할 수 있어요.
+          </p>
+        ) : (
+          <ApplyForm action={applyWithId} />
+        )}
       </div>
 
       <div className="space-y-2">
