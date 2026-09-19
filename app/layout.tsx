@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import Script from 'next/script';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { signOutAction } from '@/lib/auth-actions';
@@ -151,14 +150,18 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
         {/*
           Google AdSense 연동: NEXT_PUBLIC_ADSENSE_CLIENT_ID 환경변수(예: ca-pub-XXXXXXXXXXXXXXXX)를
-          등록하면 아래 스크립트가 <head>에 자동으로 들어간다 (site ownership 확인 + 광고 로딩용).
+          등록하면 아래 스크립트가 들어간다 (site ownership 확인 + 광고 로딩용).
+          일반 <script> 태그를 그대로 써야 한다 — next/script의 beforeInteractive는
+          서버 HTML에 <link rel="preload">로만 렌더링되고 실제 <script> 태그는
+          클라이언트 JS 실행 후에야 생기는데, 애드센스 소유권 확인 크롤러는 JS를
+          실행하지 않고 원본 HTML만 보기 때문에 그 방식으로는 인증이 안 된다.
           다음 단계: AdSense 승인 후 components/AdSlot.tsx의 placeholder를 실제
           <ins class="adsbygoogle"> 태그로 교체.
         */}
         {process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID && (
-          <Script
+          // eslint-disable-next-line @next/next/no-sync-scripts
+          <script
             async
-            strategy="beforeInteractive"
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}`}
             crossOrigin="anonymous"
           />
