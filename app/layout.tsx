@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import Script from 'next/script';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { signOutAction } from '@/lib/auth-actions';
@@ -149,11 +150,19 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
 
         {/*
-          Google AdSense 연동 위치 (실제 배포 시):
-          1) AdSense 승인 후 발급받은 publisher ID로 아래 스크립트를 <head>에 추가
-             <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossOrigin="anonymous" />
-          2) components/AdSlot.tsx의 placeholder를 실제 <ins class="adsbygoogle"> 태그로 교체
+          Google AdSense 연동: NEXT_PUBLIC_ADSENSE_CLIENT_ID 환경변수(예: ca-pub-XXXXXXXXXXXXXXXX)를
+          등록하면 아래 스크립트가 <head>에 자동으로 들어간다 (site ownership 확인 + 광고 로딩용).
+          다음 단계: AdSense 승인 후 components/AdSlot.tsx의 placeholder를 실제
+          <ins class="adsbygoogle"> 태그로 교체.
         */}
+        {process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID && (
+          <Script
+            async
+            strategy="beforeInteractive"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}`}
+            crossOrigin="anonymous"
+          />
+        )}
 
         <footer className="mx-auto max-w-5xl px-4 py-8 text-xs text-slate-400 space-y-2">
           <p>
