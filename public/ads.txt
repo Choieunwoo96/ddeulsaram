@@ -1,8 +1,1 @@
-# Google AdSense 승인을 받으면, AdSense 대시보드의 "사이트" 메뉴에서 알려주는
-# 아래 형식의 줄로 이 파일 내용을 교체하세요 (pub- 뒤 숫자는 여러분의 퍼블리셔 ID):
-#
-# google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
-#
-# 아직 승인 전이라 비워둔 상태입니다. 이 파일이 있다는 것 자체는 심사에
-# 문제가 되지 않지만, 승인 후에는 꼭 위 줄로 채워 넣어야 광고가 정상적으로
-# 표시됩니다.
+google.com, pub-5909882973526634, DIRECT, f08c47fec0942fa0
